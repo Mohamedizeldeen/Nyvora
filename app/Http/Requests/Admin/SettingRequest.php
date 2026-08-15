@@ -31,6 +31,8 @@ class SettingRequest extends FormRequest
 
             // Google's publisher id, e.g. ca-pub-1234567890123456.
             'adsense_client_id' => ['nullable', 'string', 'max:40', 'regex:/^ca-pub-\d{10,20}$/'],
+
+            'search_indexable' => ['nullable', 'boolean'],
         ];
     }
 
@@ -41,6 +43,7 @@ class SettingRequest extends FormRequest
     {
         $this->merge([
             'promo_enabled' => $this->boolean('promo_enabled') ? '1' : '0',
+            'search_indexable' => $this->boolean('search_indexable') ? '1' : '0',
         ]);
     }
 

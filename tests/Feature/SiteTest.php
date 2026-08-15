@@ -4,6 +4,7 @@ use App\Mail\ConfirmSubscription;
 use App\Models\Article;
 use App\Models\Author;
 use App\Models\Category;
+use App\Models\Setting;
 use App\Models\Subscriber;
 use Database\Seeders\NewsSeeder;
 use Illuminate\Support\Facades\Mail;
@@ -370,16 +371,49 @@ it('serves a valid RSS feed of the latest stories', function () {
         ->and((string) $xml->channel->item[0]->link)->toBe(route('article.show', $article));
 });
 
-it('blocks crawlers outside production and points them at the sitemap in it', function () {
-    // Local/staging: a duplicate of the site must not compete in search results.
-    $this->get('/robots.txt')->assertOk()->assertSee('Disallow: /');
+it('lets crawlers in by default and points them at the sitemap', function () {
+    $lines = explode("\n", trim($this->get('/robots.txt')->assertOk()->getContent()));
 
-    app()->detectEnvironment(fn () => 'production');
+    // A blanket "Disallow: /" is the failure mode this guards against; matching
+    // on lines (not substrings) so "Disallow: /admin" cannot pass for it.
+    expect($lines)->not->toContain('Disallow: /')
+        ->and($lines)->toContain('Disallow: /admin')
+        ->and($lines)->toContain('Sitemap: '.route('sitemap'));
 
-    $this->get('/robots.txt')
-        ->assertOk()
-        ->assertSee('Disallow: /admin')
-        ->assertSee('Sitemap: ', escape: false);
+    // ...and nothing on the page contradicts it.
+    $this->get('/')->assertOk()->assertDontSee('name="robots"', escape: false);
+});
+
+it('blocks crawlers when the admin switches indexing off', function () {
+    Setting::put(['search_indexable' => '0']);
+
+    $lines = explode("\n", trim($this->get('/robots.txt')->assertOk()->getContent()));
+
+    expect($lines)->toContain('Disallow: /')
+        ->and($lines)->not->toContain('Sitemap: '.route('sitemap'));
+
+    // robots.txt only stops crawling; the meta tag is what stops indexing.
+    $this->get('/')->assertOk()->assertSee('<meta name="robots" content="noindex, nofollow">', escape: false);
+});
+
+it('lets the environment block indexing even when the admin toggle is on', function () {
+    Setting::put(['search_indexable' => '1']);
+    config(['seo.indexable' => false]);   // SITE_INDEXABLE=false on staging
+
+    $lines = explode("\n", trim($this->get('/robots.txt')->assertOk()->getContent()));
+
+    expect($lines)->toContain('Disallow: /');
+    $this->get('/')->assertOk()->assertSee('noindex, nofollow', escape: false);
+});
+
+it('does not tie indexing to APP_ENV, so a mis-set environment cannot hide the site', function () {
+    // The old behaviour keyed off APP_ENV; a deploy missing APP_ENV=production
+    // would then vanish from search with no warning.
+    app()->detectEnvironment(fn () => 'staging');
+
+    $lines = explode("\n", trim($this->get('/robots.txt')->assertOk()->getContent()));
+
+    expect($lines)->not->toContain('Disallow: /');
 });
 
 it('gives every page a self-referencing canonical, including page 2', function () {

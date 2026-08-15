@@ -133,20 +133,27 @@ sidebar form → pending subscriber → confirmation email (Mailgun)
 
 ### Configuration
 
+Configured and verified against the live account:
+
 ```dotenv
 MAIL_MAILER=mailgun
-MAIL_FROM_ADDRESS="newsletter@yourdomain.com"   # must be on the verified domain
+MAIL_FROM_ADDRESS="newsletter@ny-vora.com"   # must be on the verified domain
 
-MAILGUN_API_KEY=...          # already set
-MAILGUN_DOMAIN=              # REQUIRED — your verified Mailgun sending domain
-MAILGUN_ENDPOINT=api.mailgun.net   # EU accounts: api.eu.mailgun.net
-MAILGUN_LIST_ADDRESS=        # optional, e.g. news@mg.yourdomain.com
+MAILGUN_API_KEY=...                # sending key (set, verified)
+MAILGUN_DOMAIN=ny-vora.com         # active custom domain, US region
+MAILGUN_ENDPOINT=api.mailgun.net   # EU accounts would use api.eu.mailgun.net
+MAILGUN_LIST_ADDRESS=              # optional, e.g. news@mg.ny-vora.com
 ```
 
 `MAILGUN_LIST_ADDRESS` is optional. Leave it blank and subscribers are stored locally only (export
 them as CSV from the admin). Set it and confirmed addresses are pushed to that Mailgun mailing list
 automatically, and unsubscribes are removed from it — so newsletters can be sent from the Mailgun
 dashboard. Sync failures are logged, never shown to the reader.
+
+> **Note on key scope.** The configured key is a *sending* key. It authenticates for sending, and
+> for reading domains, events and lists — but it returns `401` on the suppressions API. If you
+> enable `MAILGUN_LIST_ADDRESS` and the sync logs 401s, swap in a private API key with Lists write
+> permission. Nothing breaks either way: the site keeps its own subscriber table regardless.
 
 Check the setup without waiting for a real signup:
 
@@ -177,7 +184,7 @@ can unsubscribe someone else by guessing an id.
 | Feature | Where |
 | --- | --- |
 | `sitemap.xml` | Generated from the database; published stories, sections and static pages only |
-| `robots.txt` | Generated; blocks crawlers entirely outside production, points at the sitemap in it |
+| `robots.txt` | Generated; allows crawling by default, disallows `/admin`, `/login`, `/search`, `/newsletter/`, points at the sitemap |
 | RSS feed | `/feed` — 30 latest stories, linked from `<head>` and the footer |
 | Canonical URLs | Self-referencing, including `?page=N` |
 | `rel="prev"` / `rel="next"` | On every paginated archive |
@@ -189,6 +196,26 @@ can unsubscribe someone else by guessing an id.
 
 **Set `APP_URL` to your real domain before going live** — the sitemap, feed, canonical tags and
 email links are all built from it.
+
+Lighthouse SEO scores **100/100** on the homepage, article, category, paginated and static pages.
+
+### Controlling indexing
+
+Indexing is **on by default**, and switched off only by an explicit decision — never inferred from
+`APP_ENV`. A deploy that forgets `APP_ENV=production` silently vanishing from Google is a far more
+expensive failure than a staging copy being crawled.
+
+Two switches, and **both must agree** before anything is indexed:
+
+| Switch | Where | Use it for |
+| --- | --- | --- |
+| `SITE_INDEXABLE` | `.env` (default `true`) | Per-deployment. Set `false` on staging and review apps. |
+| "Allow search engines to index this site" | Admin → Settings | Editorial control on the live site. |
+
+Either one can block; neither can force indexing on alone. When blocked, `robots.txt` returns
+`Disallow: /` **and** every page carries `<meta name="robots" content="noindex, nofollow">` — a
+`Disallow` alone stops crawling but does not stop a URL discovered elsewhere from being listed.
+The Settings screen shows a warning whenever the site is hidden, and explains which switch did it.
 
 ## Social sharing
 

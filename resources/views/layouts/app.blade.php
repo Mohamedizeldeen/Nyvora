@@ -36,6 +36,13 @@
     <meta name="description" content="{{ $pageDescription }}">
     <link rel="canonical" href="{{ $canonical }}">
 
+    {{-- A robots.txt Disallow stops crawling but does not stop indexing — a URL
+         found elsewhere can still be listed. Only this tag reliably keeps a
+         staging copy out of the results. --}}
+    @unless (site_is_indexable())
+        <meta name="robots" content="noindex, nofollow">
+    @endunless
+
     {{-- Feed discovery for readers and aggregators --}}
     <link rel="alternate" type="application/rss+xml"
           title="{{ $siteName }} — latest stories" href="{{ route('feed') }}">

@@ -112,6 +112,46 @@
         </div>
     </section>
 
+    {{-- ============ Search engines ============ --}}
+    <section class="admin-card space-y-4">
+        <div>
+            <h2 class="text-sm font-black uppercase tracking-wider">Search engines</h2>
+            <p class="admin-hint !mt-1">
+                Controls <code>robots.txt</code> and the page-level robots tag.
+            </p>
+        </div>
+
+        @php($envBlocks = ! config('seo.indexable'))
+
+        <label class="flex items-start gap-2.5 text-sm">
+            <input type="checkbox" name="search_indexable" value="1"
+                   @checked(old('search_indexable', $settings['search_indexable']) === '1' || old('search_indexable') === '1')
+                   @disabled($envBlocks)
+                   class="mt-0.5 size-4 rounded border-rule text-brand focus:ring-brand/30 disabled:opacity-40">
+            <span>
+                <span class="font-semibold">Allow search engines to index this site</span>
+                <span class="block text-xs text-ink/45">
+                    Turn this off only for a staging copy. While it is off, every page carries
+                    <code>noindex</code> and <code>robots.txt</code> disallows everything.
+                </span>
+            </span>
+        </label>
+
+        @if ($envBlocks)
+            {{-- The env switch wins, so make it obvious why the toggle is inert. --}}
+            <p class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                <strong class="font-bold">Blocked by the environment.</strong>
+                <code>SITE_INDEXABLE</code> is set to false in <code>.env</code>, so this site is not
+                indexable no matter what this toggle says. Remove it to allow indexing.
+            </p>
+        @elseif (! setting_bool('search_indexable'))
+            <p class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                <strong class="font-bold">This site is hidden from search engines.</strong>
+                No page will appear in Google results until this is switched back on.
+            </p>
+        @endif
+    </section>
+
     {{-- ============ AdSense ============ --}}
     <section class="admin-card space-y-4">
         <div>

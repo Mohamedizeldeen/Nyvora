@@ -24,3 +24,17 @@ if (! function_exists('setting_bool')) {
         return Setting::bool($key);
     }
 }
+
+if (! function_exists('site_is_indexable')) {
+    /**
+     * May search engines index this site?
+     *
+     * Both switches have to agree: SITE_INDEXABLE guards the deployment
+     * (staging sets it to false), and the admin toggle guards editorially.
+     * Either one can block; neither can force indexing on alone.
+     */
+    function site_is_indexable(): bool
+    {
+        return (bool) config('seo.indexable') && Setting::bool('search_indexable');
+    }
+}

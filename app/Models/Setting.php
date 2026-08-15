@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Cache;
+use Throwable;
 
 /**
  * Key/value site settings the admin can edit without a deploy.
@@ -41,6 +42,8 @@ class Setting extends Model
         'promo_cta_url' => '',
         'promo_tone' => 'accent',
         'adsense_client_id' => '',
+        // Indexing is on by default — a site nobody can find is the worse failure.
+        'search_indexable' => '1',
     ];
 
     /**
