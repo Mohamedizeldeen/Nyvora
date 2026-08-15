@@ -12,6 +12,33 @@ the category tints and the "Most Popular" widget.
 - Node 20+
 - Composer
 
+### A note on the PHP version
+
+Composer resolves dependencies against a **pinned platform version**, declared in `composer.json`:
+
+```json
+"config": { "platform": { "php": "8.3.33" } }
+```
+
+This is deliberate. Left unpinned, Composer resolves against whatever PHP the *developer* happens to
+run — and on PHP 8.5 it picks Symfony 8, Pest 5 and PHPUnit 13, all of which require **PHP 8.4.1+**.
+`composer install` then fails on an 8.3 server with `your php version (8.3.x) does not satisfy that
+requirement`.
+
+With the pin, Composer resolves the Symfony **7.4 LTS** line and Pest 4 instead — versions that run
+on 8.3 *and* on 8.4/8.5, so one lockfile works everywhere. Laravel 13 itself supports PHP 8.3 and
+accepts `symfony/* ^7.4 || ^8.0`, so nothing is lost.
+
+**If you upgrade every environment to PHP 8.4+**, raise the pin and re-resolve to move up to the
+newer packages:
+
+```bash
+composer config platform.php 8.4.0
+composer update
+```
+
+Always run `composer install` (not `update`) on servers, so they get exactly what is in the lockfile.
+
 ## Setup
 
 ```bash
@@ -26,7 +53,7 @@ mysql -u root -p -e "CREATE DATABASE nyvora CHARACTER SET utf8mb4 COLLATE utf8mb
 
 php artisan migrate --seed   # 5 categories, 6 authors, 20 published articles
 php artisan storage:link     # serves uploaded images from public/storage
-npm run build                # or: npm run dev
+npm run build                # or: npm run dev (see note on public/hot below)
 php artisan serve            # http://127.0.0.1:8000
 ```
 
@@ -235,3 +262,20 @@ the bracketed sections of `pages/privacy-policy.blade.php`.
 php artisan test      # 62 feature tests
 ./vendor/bin/pint     # code style
 ```
+
+## Troubleshooting
+
+**The site loads with no styling at all.** `npm run dev` leaves a `public/hot` file behind when it
+stops. While that file exists, Laravel serves assets from the Vite dev server on port 5173 instead
+of the built files, so everything 404s once the dev server is gone. Delete it:
+
+```bash
+rm -f public/hot public/fonts-manifest.dev.json
+npm run build
+```
+
+**`composer install` fails with "your php version does not satisfy that requirement".** See the note
+on the PHP version above — the platform pin exists to prevent exactly this.
+
+**Signups work but no email arrives.** Check `php artisan nyvora:mail-test you@yourdomain.com`, then
+confirm a queue worker is running (`php artisan queue:work`) — confirmation emails are queued.

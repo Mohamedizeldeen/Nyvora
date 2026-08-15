@@ -22,6 +22,13 @@ class ConfirmSubscription extends Mailable implements ShouldQueue
 {
     use Queueable, SerializesModels;
 
+    /**
+     * If the subscriber row disappears before the worker picks the job up —
+     * an admin deleting a pending signup, say — quietly drop the job instead
+     * of failing it. There is nobody left to email.
+     */
+    public bool $deleteWhenMissingModels = true;
+
     public function __construct(public Subscriber $subscriber) {}
 
     public function envelope(): Envelope
