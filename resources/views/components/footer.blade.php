@@ -38,6 +38,11 @@
                     <li><a href="{{ route('about') }}" class="text-sm text-white/75 transition-colors hover:text-brand-light">About us</a></li>
                     <li><a href="{{ route('contact') }}" class="text-sm text-white/75 transition-colors hover:text-brand-light">Contact</a></li>
                     <li><a href="{{ route('privacy-policy') }}" class="text-sm text-white/75 transition-colors hover:text-brand-light">Privacy policy</a></li>
+                    <li>
+                        <a href="{{ route('feed') }}" class="text-sm text-white/75 transition-colors hover:text-brand-light">
+                            RSS feed
+                        </a>
+                    </li>
                 </ul>
             </nav>
         </div>

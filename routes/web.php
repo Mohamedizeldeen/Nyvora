@@ -4,10 +4,15 @@ use App\Http\Controllers\Admin;
 use App\Http\Controllers\ArticleController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\FeedController;
 use App\Http\Controllers\HomeController;
+use App\Http\Controllers\NewsletterController;
 use App\Http\Controllers\PageController;
+use App\Http\Controllers\RobotsController;
 use App\Http\Controllers\SearchController;
+use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\SubscriberController;
+use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -27,11 +32,41 @@ Route::get('/search', [SearchController::class, 'index'])->name('search');
 
 /*
 |--------------------------------------------------------------------------
-| Newsletter
+| SEO endpoints
 |--------------------------------------------------------------------------
+|
+| Generated rather than static so the URLs always match the live domain.
+|
 */
 
-Route::post('/subscribe', [SubscriberController::class, 'store'])->name('subscribe');
+Route::get('/sitemap.xml', [SitemapController::class, 'index'])->name('sitemap');
+Route::get('/robots.txt', [RobotsController::class, 'index'])->name('robots');
+Route::get('/feed', [FeedController::class, 'index'])->name('feed');
+
+/*
+|--------------------------------------------------------------------------
+| Newsletter
+|--------------------------------------------------------------------------
+|
+| Double opt-in. Signing up sends a confirmation email through Mailgun;
+| the confirm and unsubscribe links resolve on an unguessable token, so
+| nobody can subscribe or remove somebody else by guessing an id.
+|
+| Signups are throttled per IP — the form is public and unauthenticated.
+|
+*/
+
+Route::post('/subscribe', [SubscriberController::class, 'store'])
+    ->middleware('throttle:10,1')
+    ->name('subscribe');
+
+Route::get('/newsletter/confirm/{subscriber}', [NewsletterController::class, 'confirm'])
+    ->name('newsletter.confirm');
+
+// GET for the link in the email, POST for the RFC 8058 one-click header.
+Route::match(['get', 'post'], '/newsletter/unsubscribe/{subscriber}', [NewsletterController::class, 'unsubscribe'])
+    ->withoutMiddleware([ValidateCsrfToken::class])
+    ->name('newsletter.unsubscribe');
 
 /*
 |--------------------------------------------------------------------------
@@ -90,7 +125,9 @@ Route::middleware(['auth', 'admin'])
 
         Route::get('subscribers/export', [Admin\SubscriberController::class, 'export'])->name('subscribers.export');
         Route::get('subscribers', [Admin\SubscriberController::class, 'index'])->name('subscribers.index');
-        Route::delete('subscribers/{subscriber}', [Admin\SubscriberController::class, 'destroy'])->name('subscribers.destroy');
+        // Bound by id, not the model's route key — the token is a secret that
+        // belongs in the reader's email, not in admin URLs and access logs.
+        Route::delete('subscribers/{subscriber:id}', [Admin\SubscriberController::class, 'destroy'])->name('subscribers.destroy');
 
         Route::get('settings', [Admin\SettingController::class, 'edit'])->name('settings.edit');
         Route::put('settings', [Admin\SettingController::class, 'update'])->name('settings.update');

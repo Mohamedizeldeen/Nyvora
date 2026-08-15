@@ -14,6 +14,18 @@
     'adAfter' => 4, // insert the in-feed ad unit after this many rows
 ])
 
+{{-- Prev/next hints help crawlers walk a paginated archive in order. --}}
+@if ($articles->hasPages())
+    @push('head')
+        @if ($articles->currentPage() > 1)
+            <link rel="prev" href="{{ $articles->previousPageUrl() }}">
+        @endif
+        @if ($articles->hasMorePages())
+            <link rel="next" href="{{ $articles->nextPageUrl() }}">
+        @endif
+    @endpush
+@endif
+
 <section aria-labelledby="feed-heading">
     <x-section-heading id="feed-heading" :accent="$accent">{{ $heading }}</x-section-heading>
 

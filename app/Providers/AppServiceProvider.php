@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Models\Category;
+use App\Services\MailgunList;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\View as ViewFacade;
@@ -15,7 +16,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        // Built from config rather than by autowiring — the constructor's
+        // defaults would otherwise hand every caller an unconfigured client.
+        $this->app->singleton(MailgunList::class, fn () => MailgunList::fromConfig());
     }
 
     /**

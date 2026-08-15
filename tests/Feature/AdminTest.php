@@ -242,7 +242,12 @@ it('creates an author and refuses to delete one with stories', function () {
 */
 
 it('lists, removes and exports subscribers', function () {
-    Subscriber::query()->create(['email' => 'reader@example.com', 'subscribed_at' => now()]);
+    $confirmed = Subscriber::query()->create([
+        'email' => 'reader@example.com',
+        'token' => Subscriber::newToken(),
+        'subscribed_at' => now(),
+        'confirmed_at' => now(),
+    ]);
 
     $this->actingAs(admin())->get('/admin/subscribers')
         ->assertOk()
@@ -252,10 +257,30 @@ it('lists, removes and exports subscribers', function () {
     $export->assertOk()->assertHeader('content-type', 'text/csv; charset=utf-8');
     expect($export->streamedContent())->toContain('reader@example.com');
 
-    $subscriber = Subscriber::query()->firstOrFail();
-    $this->actingAs(admin())->delete("/admin/subscribers/{$subscriber->id}")->assertRedirect();
+    $this->actingAs(admin())->delete("/admin/subscribers/{$confirmed->id}")->assertRedirect();
 
     expect(Subscriber::query()->count())->toBe(0);
+});
+
+it('exports only confirmed addresses unless all=1 is passed', function () {
+    Subscriber::query()->create([
+        'email' => 'confirmed@example.com',
+        'token' => Subscriber::newToken(),
+        'confirmed_at' => now(),
+    ]);
+    Subscriber::query()->create([
+        'email' => 'pending@example.com',
+        'token' => Subscriber::newToken(),
+    ]);
+
+    // Mailing an unconfirmed address is what double opt-in exists to prevent.
+    $default = $this->actingAs(admin())->get('/admin/subscribers/export');
+    expect($default->streamedContent())
+        ->toContain('confirmed@example.com')
+        ->not->toContain('pending@example.com');
+
+    $all = $this->actingAs(admin())->get('/admin/subscribers/export?all=1');
+    expect($all->streamedContent())->toContain('pending@example.com');
 });
 
 /*

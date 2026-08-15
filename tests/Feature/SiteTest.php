@@ -1,10 +1,12 @@
 <?php
 
+use App\Mail\ConfirmSubscription;
 use App\Models\Article;
 use App\Models\Author;
 use App\Models\Category;
 use App\Models\Subscriber;
 use Database\Seeders\NewsSeeder;
+use Illuminate\Support\Facades\Mail;
 
 /**
  * Build a published article with a real category and author attached.
@@ -228,25 +230,192 @@ it('treats LIKE wildcards in a search term as literal characters', function () {
 |--------------------------------------------------------------------------
 */
 
-it('stores a newsletter signup and normalises the address', function () {
-    $this->post('/subscribe', ['email' => '  READER@Example.COM  '])
-        ->assertRedirect();
+it('stores a signup as pending and emails a confirmation link', function () {
+    Mail::fake();
 
-    expect(Subscriber::query()->pluck('email')->all())->toBe(['reader@example.com']);
+    $this->post('/subscribe', ['email' => '  READER@Example.COM  '])->assertRedirect();
+
+    $subscriber = Subscriber::query()->firstOrFail();
+
+    expect($subscriber->email)->toBe('reader@example.com')
+        ->and($subscriber->status())->toBe('pending')
+        ->and($subscriber->token)->not->toBeEmpty();
+
+    Mail::assertQueued(ConfirmSubscription::class, fn ($mail) => $mail->hasTo('reader@example.com'));
 });
 
-it('does not error when the same address subscribes twice', function () {
-    $this->post('/subscribe', ['email' => 'reader@example.com'])->assertSessionHasNoErrors();
+it('confirms the subscription when the emailed link is opened', function () {
+    Mail::fake();
+    $this->post('/subscribe', ['email' => 'reader@example.com']);
+
+    $subscriber = Subscriber::query()->firstOrFail();
+
+    $this->get(route('newsletter.confirm', $subscriber))
+        ->assertOk()
+        ->assertSee('You are on the list');
+
+    expect($subscriber->fresh()->status())->toBe('confirmed');
+});
+
+it('404s on an unknown or tampered confirmation token', function () {
+    $this->get('/newsletter/confirm/not-a-real-token')->assertNotFound();
+});
+
+it('unsubscribes from the emailed link, by GET or one-click POST', function () {
+    Mail::fake();
+    $this->post('/subscribe', ['email' => 'reader@example.com']);
+    $subscriber = Subscriber::query()->firstOrFail();
+    $subscriber->confirm();
+
+    $this->get(route('newsletter.unsubscribe', $subscriber))
+        ->assertOk()
+        ->assertSee('You have been unsubscribed');
+
+    expect($subscriber->fresh()->status())->toBe('unsubscribed');
+
+    // RFC 8058 one-click: a POST with no CSRF token must still work.
+    $other = Subscriber::query()->create([
+        'email' => 'other@example.com',
+        'token' => Subscriber::newToken(),
+        'confirmed_at' => now(),
+    ]);
+
+    $this->post(route('newsletter.unsubscribe', $other))->assertOk();
+
+    expect($other->fresh()->status())->toBe('unsubscribed');
+});
+
+it('does not send a second confirmation to an already confirmed address', function () {
+    Mail::fake();
+
+    $this->post('/subscribe', ['email' => 'reader@example.com']);
+    Subscriber::query()->firstOrFail()->confirm();
+
     $this->post('/subscribe', ['email' => 'reader@example.com'])->assertSessionHasNoErrors();
 
     expect(Subscriber::query()->count())->toBe(1);
+    Mail::assertQueuedCount(1);
+});
+
+it('restarts the opt-in flow for someone who previously unsubscribed', function () {
+    Mail::fake();
+
+    $subscriber = Subscriber::query()->create([
+        'email' => 'reader@example.com',
+        'token' => Subscriber::newToken(),
+        'confirmed_at' => now()->subMonth(),
+        'unsubscribed_at' => now()->subDay(),
+    ]);
+    $oldToken = $subscriber->token;
+
+    $this->post('/subscribe', ['email' => 'reader@example.com'])->assertRedirect();
+
+    $subscriber->refresh();
+
+    expect($subscriber->status())->toBe('pending')
+        // A fresh token invalidates the link from the previous subscription.
+        ->and($subscriber->token)->not->toBe($oldToken);
+
+    Mail::assertQueued(ConfirmSubscription::class);
 });
 
 it('rejects an invalid email address', function () {
+    Mail::fake();
+
     $this->post('/subscribe', ['email' => 'not-an-email'])
         ->assertSessionHasErrors('email');
 
     expect(Subscriber::query()->count())->toBe(0);
+    Mail::assertNothingQueued();
+});
+
+/*
+|--------------------------------------------------------------------------
+| SEO endpoints
+|--------------------------------------------------------------------------
+*/
+
+it('serves a sitemap listing published stories and sections', function () {
+    $category = Category::factory()->create(['slug' => 'ai']);
+    $live = article(['slug' => 'a-live-story', 'category_id' => $category->id]);
+    $draft = Article::factory()->draft()->create(['slug' => 'a-draft-story']);
+
+    $response = $this->get('/sitemap.xml')
+        ->assertOk()
+        ->assertHeader('content-type', 'application/xml; charset=UTF-8');
+
+    $response
+        ->assertSee(route('article.show', $live), escape: false)
+        ->assertSee(route('category.show', $category), escape: false)
+        ->assertSee(route('about'), escape: false)
+        // Drafts, the admin and search must never be advertised to crawlers.
+        ->assertDontSee('a-draft-story', escape: false)
+        ->assertDontSee(route('search'), escape: false)
+        ->assertDontSee(route('admin.dashboard'), escape: false);
+
+    expect(simplexml_load_string($response->getContent()))->not->toBeFalse();
+});
+
+it('serves a valid RSS feed of the latest stories', function () {
+    $article = article(['title' => 'A story worth syndicating']);
+
+    $response = $this->get('/feed')
+        ->assertOk()
+        ->assertHeader('content-type', 'application/rss+xml; charset=UTF-8')
+        ->assertSee('A story worth syndicating');
+
+    $xml = simplexml_load_string($response->getContent());
+
+    expect($xml)->not->toBeFalse()
+        ->and((string) $xml->channel->item[0]->link)->toBe(route('article.show', $article));
+});
+
+it('blocks crawlers outside production and points them at the sitemap in it', function () {
+    // Local/staging: a duplicate of the site must not compete in search results.
+    $this->get('/robots.txt')->assertOk()->assertSee('Disallow: /');
+
+    app()->detectEnvironment(fn () => 'production');
+
+    $this->get('/robots.txt')
+        ->assertOk()
+        ->assertSee('Disallow: /admin')
+        ->assertSee('Sitemap: ', escape: false);
+});
+
+it('gives every page a self-referencing canonical, including page 2', function () {
+    Article::factory()->count(20)->create();
+
+    $this->get('/')->assertOk()->assertSee('<link rel="canonical" href="'.route('home').'">', escape: false);
+
+    $this->get('/?page=2')
+        ->assertOk()
+        ->assertSee('<link rel="canonical" href="'.route('home').'?page=2">', escape: false)
+        // ...and prev/next hints so crawlers can walk the archive.
+        ->assertSee('<link rel="prev"', escape: false);
+});
+
+it('publishes organisation and breadcrumb structured data', function () {
+    $category = Category::factory()->create(['name' => 'Security', 'slug' => 'security']);
+    $article = article(['category_id' => $category->id]);
+
+    $this->get('/')->assertOk()->assertSee('NewsMediaOrganization', escape: false);
+
+    $this->get("/article/{$article->slug}")
+        ->assertOk()
+        ->assertSee('BreadcrumbList', escape: false)
+        ->assertSee('NewsArticle', escape: false);
+
+    $this->get('/category/security')->assertOk()->assertSee('BreadcrumbList', escape: false);
+});
+
+it('renders a branded 404 page that is not indexed', function () {
+    Category::factory()->create(['name' => 'Gadgets', 'slug' => 'gadgets']);
+
+    $this->get('/article/no-such-story')
+        ->assertNotFound()
+        ->assertSee('We cannot find that page')
+        ->assertSee('noindex, follow', escape: false)
+        ->assertSee('Gadgets');
 });
 
 /*

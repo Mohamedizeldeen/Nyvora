@@ -21,6 +21,21 @@
         <meta property="article:section" content="{{ $article->category->name }}">
     @endif
 
+    {{-- Breadcrumb trail, so search results show "Home › Security › …". --}}
+    <script type="application/ld+json">
+        {!! json_encode([
+            '@context' => 'https://schema.org',
+            '@type' => 'BreadcrumbList',
+            'itemListElement' => array_values(array_filter([
+                ['@type' => 'ListItem', 'position' => 1, 'name' => 'Home', 'item' => route('home')],
+                $article->category
+                    ? ['@type' => 'ListItem', 'position' => 2, 'name' => $article->category->name, 'item' => route('category.show', $article->category)]
+                    : null,
+                ['@type' => 'ListItem', 'position' => $article->category ? 3 : 2, 'name' => $article->title],
+            ])),
+        ], JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) !!}
+    </script>
+
     {{-- NewsArticle structured data. JSON_HEX_* keeps a stray "</script>" in the
          content from breaking out of this block. --}}
     <script type="application/ld+json">
@@ -92,6 +107,7 @@
                 @if ($article->thumbnail_url)
                     <figure class="mt-8">
                         <x-thumbnail :article="$article" :eager="true"
+                                     :alt="$article->title"
                                      sizes="(min-width: 1024px) 780px, 100vw"
                                      class="aspect-[16/9] w-full rounded-xl" />
                         <figcaption class="mt-2.5 text-xs text-ink/45">

@@ -3,6 +3,19 @@
 @section('title', $category->name)
 @section('description', 'The latest ' . $category->name . ' news, reviews and analysis from ' . config('app.name') . '.')
 
+@push('head')
+    <script type="application/ld+json">
+        {!! json_encode([
+            '@context' => 'https://schema.org',
+            '@type' => 'BreadcrumbList',
+            'itemListElement' => [
+                ['@type' => 'ListItem', 'position' => 1, 'name' => 'Home', 'item' => route('home')],
+                ['@type' => 'ListItem', 'position' => 2, 'name' => $category->name, 'item' => route('category.show', $category)],
+            ],
+        ], JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) !!}
+    </script>
+@endpush
+
 @section('content')
 
     {{-- Archive masthead, tinted with the category's own colour --}}

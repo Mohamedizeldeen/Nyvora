@@ -11,6 +11,10 @@
     'article',
     'eager' => false,
     'sizes' => null,
+    // Feed thumbnails sit right next to the headline they belong to, so they
+    // are decorative and take an empty alt. The lead image on an article page
+    // stands alone and gets a real description instead.
+    'alt' => '',
 ])
 
 <div {{ $attributes
@@ -18,7 +22,7 @@
         ->style('background-color: '.($article->category?->displayColor() ?? '#5B2BEF')) }}>
     @if ($article->thumbnail_url)
         <img src="{{ $article->thumbnail_url }}"
-             alt=""
+             alt="{{ $alt }}"
              @if ($sizes) sizes="{{ $sizes }}" @endif
              loading="{{ $eager ? 'eager' : 'lazy' }}"
              decoding="async"

@@ -94,6 +94,75 @@ Bodies are stored as plain text and escaped on output, so nothing in the databas
 - a line starting with `## ` becomes a subheading
 - a line starting with `> ` becomes a pull quote
 
+## Newsletter (Mailgun)
+
+The list is **double opt-in**: signing up creates a pending row and Mailgun sends a confirmation
+link. Nothing is mailed and nothing reaches your mailing list until the reader clicks it.
+
+```
+sidebar form → pending subscriber → confirmation email (Mailgun)
+             → reader clicks link → confirmed → (optional) added to Mailgun list
+```
+
+### Configuration
+
+```dotenv
+MAIL_MAILER=mailgun
+MAIL_FROM_ADDRESS="newsletter@yourdomain.com"   # must be on the verified domain
+
+MAILGUN_API_KEY=...          # already set
+MAILGUN_DOMAIN=              # REQUIRED — your verified Mailgun sending domain
+MAILGUN_ENDPOINT=api.mailgun.net   # EU accounts: api.eu.mailgun.net
+MAILGUN_LIST_ADDRESS=        # optional, e.g. news@mg.yourdomain.com
+```
+
+`MAILGUN_LIST_ADDRESS` is optional. Leave it blank and subscribers are stored locally only (export
+them as CSV from the admin). Set it and confirmed addresses are pushed to that Mailgun mailing list
+automatically, and unsubscribes are removed from it — so newsletters can be sent from the Mailgun
+dashboard. Sync failures are logged, never shown to the reader.
+
+Check the setup without waiting for a real signup:
+
+```bash
+php artisan nyvora:mail-test you@yourdomain.com
+```
+
+### A queue worker is required
+
+Confirmation emails are **queued** so a slow Mailgun never delays a visitor's request. In production
+something must run:
+
+```bash
+php artisan queue:work
+```
+
+Without a worker the rows are created but no email is ever sent.
+
+### Unsubscribing
+
+Every confirmation email carries `List-Unsubscribe` and `List-Unsubscribe-Post` headers, so Gmail
+and Outlook show a native unsubscribe button — a requirement for bulk senders. The link works by
+`GET` (a click) and by `POST` (RFC 8058 one-click), and resolves on an unguessable token, so nobody
+can unsubscribe someone else by guessing an id.
+
+## SEO
+
+| Feature | Where |
+| --- | --- |
+| `sitemap.xml` | Generated from the database; published stories, sections and static pages only |
+| `robots.txt` | Generated; blocks crawlers entirely outside production, points at the sitemap in it |
+| RSS feed | `/feed` — 30 latest stories, linked from `<head>` and the footer |
+| Canonical URLs | Self-referencing, including `?page=N` |
+| `rel="prev"` / `rel="next"` | On every paginated archive |
+| Structured data | `NewsMediaOrganization` + `WebSite` (with SearchAction) site-wide, `NewsArticle` and `BreadcrumbList` on stories |
+| Open Graph / Twitter | Title, description, image, locale, author, section, publish time |
+| Semantic HTML | One `<h1>` per page; `article`, `nav`, `aside`, `main`, `time`, `figure` |
+| Custom 404 | Branded, `noindex, follow`, with search and section links |
+| `noindex` | Search results, newsletter confirm/unsubscribe pages, the whole admin |
+
+**Set `APP_URL` to your real domain before going live** — the sitemap, feed, canonical tags and
+email links are all built from it.
+
 ## Social sharing
 
 Every article carries a share row (under the byline and again after the body) with X, Facebook,
@@ -163,6 +232,6 @@ the bracketed sections of `pages/privacy-policy.blade.php`.
 ## Tests
 
 ```bash
-php artisan test      # 51 feature tests
+php artisan test      # 62 feature tests
 ./vendor/bin/pint     # code style
 ```
