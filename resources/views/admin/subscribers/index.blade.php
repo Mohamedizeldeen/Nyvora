@@ -31,6 +31,14 @@
         @endforeach
     </div>
 
+    @unless (newsletter_enabled())
+        <p class="mb-5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            <strong class="font-bold">Signups are closed.</strong>
+            The newsletter is switched off in Settings, so the form is hidden and no new addresses can
+            be added. Existing records are untouched and unsubscribe links still work.
+        </p>
+    @endunless
+
     <div class="mb-5 flex flex-wrap items-end justify-between gap-4">
         <p class="max-w-xl text-sm text-ink/55">
             The list is double opt-in — a signup only becomes a subscriber once the reader clicks the

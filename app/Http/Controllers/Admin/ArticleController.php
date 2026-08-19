@@ -128,6 +128,7 @@ class ArticleController extends Controller
         ]);
 
         $data['is_featured'] = $request->boolean('is_featured');
+        $data['comments_open'] = $request->boolean('comments_open');
         $data['views_count'] = (int) $request->input('views_count', $article?->views_count ?? 0);
         $data['thumbnail_url'] = $this->resolveImageField(
             $request,

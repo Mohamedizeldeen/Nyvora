@@ -7,6 +7,7 @@
     // The advertising section describes what the site actually does today, so it
     // follows the AdSense setting rather than claiming cookies we do not set.
     $servesAds = filled(setting('adsense_client_id'));
+    $usesAnalytics = analytics_id() !== null;
 
     // Bump this only when the policy itself changes — not on every deploy.
     $lastUpdated = '16 August 2026';
@@ -26,10 +27,24 @@
             <h2 class="text-sm font-black uppercase tracking-wider text-ink">The short version</h2>
             <ul class="mt-4 space-y-2.5 text-sm leading-relaxed text-ink/70">
                 <li>&bull; You can read {{ config('app.name') }} without giving us anything or creating an account.</li>
-                <li>&bull; The only personal information we ask for is an email address, and only if you choose to subscribe to our newsletter.</li>
-                <li>&bull; We set two cookies, both strictly necessary for the site to work. We run no analytics and no tracking scripts.</li>
+                @if (newsletter_enabled())
+                    <li>&bull; The only personal information we ask for is an email address, and only if you choose to subscribe to our newsletter.</li>
+                @else
+                    <li>&bull; The only personal information we hold is what you type into a contact form, and only if you choose to send one.</li>
+                @endif
+                @if ($usesAnalytics)
+                    <li>&bull; Two cookies are strictly necessary. Analytics cookies are set only if you accept them, and declining changes nothing about the site.</li>
+                @else
+                    <li>&bull; We set two cookies, both strictly necessary for the site to work. We run no analytics and no tracking scripts.</li>
+                @endif
                 <li>&bull; We do not sell your data, and we do not share it with anyone except the providers that run the site for us.</li>
-                <li>&bull; You can unsubscribe, or ask us to delete everything we hold about you, at any time.</li>
+                {{-- Whole variants, never a directive spliced mid-sentence: Blade
+                     ignores an @directive preceded by a word character. --}}
+                @if (newsletter_enabled())
+                    <li>&bull; You can unsubscribe, or ask us to delete everything we hold about you, at any time.</li>
+                @else
+                    <li>&bull; You can ask us to delete anything we hold about you at any time.</li>
+                @endif
             </ul>
         </div>
 
@@ -47,11 +62,13 @@
                      email below satisfies that. Add a registered postal address here if the
                      company is established somewhere that expects one. --}}
                 <strong>Nyvora Media</strong><br>
-                Email: <a href="mailto:privacy@ny-vora.com">privacy@ny-vora.com</a>
+                Contact us through the
+                <x-contact-button topic="privacy" variant="link">privacy form</x-contact-button> on this site.
             </p>
 
             <h2>What we collect</h2>
 
+            @if (newsletter_enabled())
             <h3 class="mt-8 mb-3 text-lg font-extrabold tracking-tight text-ink">Newsletter subscriptions</h3>
             <p>
                 If you subscribe to The Daily Brief we store your email address, the date you signed
@@ -64,6 +81,49 @@
                 is deleted within 30 days. This is deliberate, so that someone typing your address by
                 mistake cannot sign you up.
             </p>
+            @endif
+
+            <h3 class="mt-8 mb-3 text-lg font-extrabold tracking-tight text-ink">Messages you send us</h3>
+            <p>
+                When you send a message through one of the forms on this site — a story tip, a
+                correction, a privacy request, anything — we store the topic you picked, your name,
+                your email address and the message itself. Nothing more: no IP address is saved with
+                it, and there is no tracking attached to the form.
+            </p>
+            <p>
+                We use it only to read your message and reply. Messages are stored on our own server
+                and read in our newsroom dashboard; they are not sent to any email provider, and they
+                are never used for marketing.
+            </p>
+
+            @if (comments_enabled())
+                <h3 class="mt-8 mb-3 text-lg font-extrabold tracking-tight text-ink">Comments</h3>
+                <p>
+                    If you comment on an article we store the name you type and the comment itself.
+                    We do not ask for an email address, and no IP address is recorded.
+                </p>
+                <p>
+                    Both are <strong>published on the article for anyone to read</strong> once an
+                    editor approves them, so please use only a name you are happy to be public. Ask us
+                    to remove a comment at any time and we will.
+                </p>
+            @endif
+
+            @if ($usesAnalytics)
+                <h3 class="mt-8 mb-3 text-lg font-extrabold tracking-tight text-ink">Analytics</h3>
+                <p>
+                    If you accept analytics cookies, Google Analytics records how you move through
+                    the site: which pages you open, roughly where you are (country or city level,
+                    from your IP address, which Google does not store), the kind of device you are
+                    using, and how you arrived. It is used to understand which stories are read.
+                </p>
+                <p>
+                    Until you accept, <strong>nothing is recorded and no analytics cookie is set</strong>.
+                    We use Google Consent Mode, so the tag stores nothing at all before you choose,
+                    and choosing Reject keeps it that way permanently. We do not use analytics to
+                    identify you or to build an advertising profile.
+                </p>
+            @endif
 
             <h3 class="mt-8 mb-3 text-lg font-extrabold tracking-tight text-ink">Server logs</h3>
             <p>
@@ -74,10 +134,18 @@
             </p>
 
             <h3 class="mt-8 mb-3 text-lg font-extrabold tracking-tight text-ink">Cookies</h3>
-            <p>
-                We set two cookies, both strictly necessary. Neither is used for advertising or
-                analytics, and neither follows you to other websites.
-            </p>
+            @if ($usesAnalytics)
+                <p>
+                    Two cookies are strictly necessary and always set. Two more belong to Google
+                    Analytics and are set <strong>only if you accept them</strong> in the banner.
+                    None of them follows you to other websites.
+                </p>
+            @else
+                <p>
+                    We set two cookies, both strictly necessary. Neither is used for advertising or
+                    analytics, and neither follows you to other websites.
+                </p>
+            @endif
         </div>
 
         <x-cookie-table class="my-8" />
@@ -85,7 +153,7 @@
         <div class="prose-nyvora max-w-none">
             <p>
                 You can block or delete cookies in your browser settings. The site will still work,
-                though the newsletter form may not be able to confirm your submission. Our
+                though any form on the site may not be able to confirm your submission. Our
                 <a href="{{ route('cookie-policy') }}">cookie policy</a> covers this in more detail.
             </p>
 
@@ -106,10 +174,24 @@
             <p>
                 If you are in the UK, EU or another region with similar law, our legal bases are:
             </p>
+            @if (newsletter_enabled())
+                <p>
+                    <strong>Consent</strong> for the newsletter. You gave it by confirming your address,
+                    and you can withdraw it at any time using the unsubscribe link in any issue — that
+                    withdrawal is as easy as the subscription was.
+                </p>
+            @endif
+            @if ($usesAnalytics)
+                <p>
+                    <strong>Consent</strong> for analytics cookies. You give it with the Accept
+                    button and nothing is stored before that. Withdraw it by clearing this site's
+                    data in your browser, and the banner will ask again.
+                </p>
+            @endif
             <p>
-                <strong>Consent</strong> for the newsletter. You gave it by confirming your address,
-                and you can withdraw it at any time using the unsubscribe link in any issue — that
-                withdrawal is as easy as the subscription was.
+                <strong>Legitimate interests</strong> for handling the messages you send us: you
+                wrote to us, and replying is the whole point. You can ask us to delete a message at
+                any time.
             </p>
             <p>
                 <strong>Legitimate interests</strong> for server logs, security and aggregate view
@@ -150,13 +232,23 @@
                 cross-context behavioural advertising in the past twelve months. We share it only with
                 the providers that operate the site on our behalf, and only as far as each needs it:
             </p>
-            <p>
-                <strong>Mailgun</strong> (Sinch Email, Inc., United States) delivers our newsletter and
-                confirmation emails. Your email address is processed by Mailgun for that purpose.
-                If you are in the UK or EU, this means your address is transferred to the United States;
-                that transfer is covered by the standard contractual clauses in Mailgun's data
-                processing agreement.
-            </p>
+            @if (newsletter_enabled())
+                <p>
+                    <strong>Mailgun</strong> (Sinch Email, Inc., United States) delivers our newsletter and
+                    confirmation emails. Your email address is processed by Mailgun for that purpose.
+                    If you are in the UK or EU, this means your address is transferred to the United States;
+                    that transfer is covered by the standard contractual clauses in Mailgun's data
+                    processing agreement.
+                </p>
+            @endif
+            @if ($usesAnalytics)
+                <p>
+                    <strong>Google</strong> (Google Ireland Limited) provides Google Analytics. If you
+                    accept analytics cookies, the data described above is processed by Google on our
+                    behalf, and may be transferred outside the UK/EU under the safeguards in Google's
+                    data processing terms. Decline, and Google receives nothing.
+                </p>
+            @endif
             <p>
                 <strong>Our hosting provider</strong> stores the database and server logs described above.
             </p>
@@ -167,15 +259,27 @@
             </p>
 
             <h2>How long we keep it</h2>
+            @if (newsletter_enabled())
+                <p>
+                    <strong>Newsletter addresses</strong> are kept until you unsubscribe. Unconfirmed
+                    signups are deleted after 30 days.
+                </p>
+                <p>
+                    When you unsubscribe we keep a minimal record — your address and the fact that you
+                    opted out — rather than deleting the row outright. This is how we make sure you are not
+                    silently re-added later, and it is the record that proves we honoured your request. If
+                    you would rather we erase it completely, ask us and we will.
+                </p>
+            @endif
+            @if (comments_enabled())
+                <p>
+                    <strong>Comments</strong> stay on the article until you or we remove them.
+                    Comments we do not approve are deleted.
+                </p>
+            @endif
             <p>
-                <strong>Newsletter addresses</strong> are kept until you unsubscribe. Unconfirmed
-                signups are deleted after 30 days.
-            </p>
-            <p>
-                When you unsubscribe we keep a minimal record — your address and the fact that you
-                opted out — rather than deleting the row outright. This is how we make sure you are not
-                silently re-added later, and it is the record that proves we honoured your request. If
-                you would rather we erase it completely, ask us and we will.
+                <strong>Messages</strong> are kept for as long as the matter is open, and cleared out
+                once it is closed. Ask us to delete yours sooner and we will.
             </p>
             <p>
                 <strong>Server logs</strong> are kept for 30 days and then deleted.
@@ -192,9 +296,9 @@
             </p>
             <p>
                 Exercising any of them costs nothing and we will not treat you differently for asking.
-                Email <a href="mailto:privacy@ny-vora.com">privacy@ny-vora.com</a> and we will respond
-                within 30 days. Because the only thing we hold about most readers is an email address,
-                we will usually reply the same week.
+                Send a <x-contact-button topic="privacy" variant="link">privacy request</x-contact-button> and we will
+                respond within 30 days. Because we hold so little, we will usually reply the same week.
+                Tell us the address you used and roughly when you wrote, so we can find the message.
             </p>
             <p>
                 If you are in the UK or EU and you think we have got something wrong, you also have the
@@ -224,14 +328,14 @@
             <h2>Changes to this policy</h2>
             <p>
                 If we change this policy we will update the date at the top of the page. If the change
-                is significant — a new provider, a new category of data, advertising going live — we
-                will say so in the newsletter before it takes effect.
+                is significant — a new provider, a new category of data, advertising going live — the
+                change will be described here before it takes effect.
             </p>
 
             <h2>Contact</h2>
             <p>
-                Questions about this policy, or about anything we hold on you, go to
-                <a href="mailto:privacy@ny-vora.com">privacy@ny-vora.com</a>. Everything else is on our
+                Questions about this policy, or about anything we hold on you, go through the
+                <x-contact-button topic="privacy" variant="link">privacy form</x-contact-button>. Everything else is on our
                 <a href="{{ route('contact') }}">contact page</a>.
             </p>
         </div>

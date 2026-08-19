@@ -42,8 +42,23 @@ class Setting extends Model
         'promo_cta_url' => '',
         'promo_tone' => 'accent',
         'adsense_client_id' => '',
+        // Paste the AdSense unit snippet (or just its slot id) for each
+        // placement. Empty = that slot keeps showing the sized placeholder.
+        'adsense_slot_sidebar' => '',
+        'adsense_slot_leaderboard' => '',
+        'adsense_slot_in_feed' => '',
+        // Auto ads let Google place extra units itself.
+        'adsense_auto_ads' => '0',
+        // Google Analytics 4 measurement ID, e.g. G-XXXXXXXXXX. Empty = no
+        // analytics code loads at all.
+        'analytics_measurement_id' => '',
         // Indexing is on by default — a site nobody can find is the worse failure.
         'search_indexable' => '1',
+        // The newsletter is switched off. Everything behind it (table, routes,
+        // Mailgun wiring) is intact, so turning this back on restores it.
+        'newsletter_enabled' => '0',
+        // Reader comments. Every comment is held for approval regardless.
+        'comments_enabled' => '1',
     ];
 
     /**
@@ -92,6 +107,34 @@ class Setting extends Model
         }
 
         Cache::forget(self::CACHE_KEY);
+    }
+
+    /**
+     * Pull the ad slot id out of whatever AdSense gave the user.
+     *
+     * They can paste the whole <ins> snippet or just the numeric id — both are
+     * accepted, because asking someone to pick the number out of a script tag
+     * is exactly the kind of step that gets done wrong.
+     */
+    public static function extractAdSlotId(?string $pasted): string
+    {
+        $pasted = trim((string) $pasted);
+
+        if ($pasted === '') {
+            return '';
+        }
+
+        // Already just the id.
+        if (preg_match('/^\d{6,20}$/', $pasted) === 1) {
+            return $pasted;
+        }
+
+        // Pulled from data-ad-slot="1234567890" in a pasted snippet.
+        if (preg_match('/data-ad-slot=["\']?(\d{6,20})["\']?/', $pasted, $matches) === 1) {
+            return $matches[1];
+        }
+
+        return '';
     }
 
     /**

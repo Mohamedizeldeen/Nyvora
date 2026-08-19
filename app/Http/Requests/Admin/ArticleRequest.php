@@ -40,6 +40,7 @@ class ArticleRequest extends FormRequest
             'remove_thumbnail' => ['nullable', 'boolean'],
 
             'is_featured' => ['nullable', 'boolean'],
+            'comments_open' => ['nullable', 'boolean'],
             'views_count' => ['nullable', 'integer', 'min:0'],
             'published_at' => ['nullable', 'date'],
         ];

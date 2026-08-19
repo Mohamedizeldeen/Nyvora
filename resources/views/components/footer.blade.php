@@ -18,7 +18,9 @@
                     {{ setting('footer_description') }}
                 </p>
 
-                <a href="{{ route('feed') }}"
+                {{-- Points at the readable page, not the raw XML. The <head>
+                     still advertises /feed itself for reader autodiscovery. --}}
+                <a href="{{ route('rss') }}"
                    class="mt-5 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-white/50 transition-colors hover:text-brand-light">
                     <svg class="size-3.5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                         <path d="M6.503 20.752A3.5 3.5 0 1 1 3 17.252a3.5 3.5 0 0 1 3.503 3.5ZM1.5 10.031v3.985A9.98 9.98 0 0 1 11.484 24h3.985A13.96 13.96 0 0 0 1.5 10.031Zm0-6.031v3.985C10.343 7.985 16.015 13.657 16.015 22.5H20A18.5 18.5 0 0 0 1.5 4Z" />

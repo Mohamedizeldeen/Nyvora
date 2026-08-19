@@ -4,6 +4,8 @@
 @section('description', 'The terms on which you may read and use ' . config('app.name') . '.')
 
 @php($lastUpdated = '16 August 2026')
+{{-- Sections number themselves, so gating one out never leaves a gap. --}}
+@php($n = 0)
 
 @section('content')
     <x-page-header title="Terms of use"
@@ -23,7 +25,7 @@
         </div>
 
         <div class="prose-nyvora max-w-none">
-            <h2>1. Who these terms are between</h2>
+            <h2>{{ ++$n }}. Who these terms are between</h2>
             <p>
                 These terms govern your use of {{ config('app.name') }}, published at
                 <a href="{{ route('home') }}">{{ parse_url(config('app.url'), PHP_URL_HOST) }}</a> by
@@ -31,7 +33,7 @@
                 If you do not, please stop using it.
             </p>
 
-            <h2>2. Using the site</h2>
+            <h2>{{ ++$n }}. Using the site</h2>
             <p>
                 Reading {{ config('app.name') }} is free and requires no account. You agree not to:
             </p>
@@ -49,7 +51,7 @@
                 headlines programmatically does not require scraping. Please use it.
             </p>
 
-            <h2>3. Our content</h2>
+            <h2>{{ ++$n }}. Our content</h2>
             <p>
                 Unless stated otherwise, the articles, photographs, graphics and code on this site are
                 owned by us or licensed to us, and are protected by copyright.
@@ -62,11 +64,11 @@
             <p>
                 <strong>You may not</strong> republish an article in full, translate it in full, use our
                 work to train machine learning models, or present it as your own, without our written
-                permission. For syndication or licensing, write to
-                <a href="mailto:hello@ny-vora.com">hello@ny-vora.com</a>.
+                permission. For syndication or licensing, use the
+                <x-contact-button topic="general" variant="link">contact form</x-contact-button>.
             </p>
 
-            <h2>4. Accuracy, and what this site is not</h2>
+            <h2>{{ ++$n }}. Accuracy, and what this site is not</h2>
             <p>
                 We take accuracy seriously and correct our mistakes openly — see our
                 <a href="{{ route('editorial-policy') }}">editorial policy</a>. But journalism is
@@ -80,22 +82,24 @@
                 yours.
             </p>
 
-            <h2>5. Links to other sites</h2>
+            <h2>{{ ++$n }}. Links to other sites</h2>
             <p>
                 We link out constantly — that is how the web works, and how you check our sourcing. We
                 do not control those sites and are not responsible for their content, their accuracy or
                 their privacy practices.
             </p>
 
-            <h2>6. The newsletter</h2>
+            @if (newsletter_enabled())
+            <h2>{{ ++$n }}. The newsletter</h2>
             <p>
                 Subscribing is optional and double opt-in: an address is only added once you confirm it
                 by email. Every issue carries an unsubscribe link that works immediately. We do not sell
                 or rent the list. See the
                 <a href="{{ route('privacy-policy') }}">privacy policy</a> for what we store.
             </p>
+            @endif
 
-            <h2>7. Advertising</h2>
+            <h2>{{ ++$n }}. Advertising</h2>
             <p>
                 The site is supported by advertising. Advertisers have no influence over our editorial
                 coverage, and our newsroom has no visibility into which advertisers appear beside a
@@ -104,14 +108,14 @@
                 <a href="{{ route('advertise') }}">advertise with us</a> page.
             </p>
 
-            <h2>8. Availability</h2>
+            <h2>{{ ++$n }}. Availability</h2>
             <p>
                 We aim to keep the site up and running, but we do not guarantee it will be available
                 without interruption, and we may change, suspend or withdraw any part of it — including
                 individual articles — at any time.
             </p>
 
-            <h2>9. Liability</h2>
+            <h2>{{ ++$n }}. Liability</h2>
             <p>
                 To the extent the law allows, we are not liable for any indirect or consequential loss
                 arising from your use of the site, or from reliance on anything published here.
@@ -122,15 +126,16 @@
                 If you are a consumer, these terms do not affect your statutory rights.
             </p>
 
-            <h2>10. Reporting a security problem</h2>
+            <h2>{{ ++$n }}. Reporting a security problem</h2>
             <p>
-                If you find a vulnerability, email <a href="mailto:security@ny-vora.com">security@ny-vora.com</a>
-                with enough detail to reproduce it. Please give us a reasonable chance to fix it before
+                If you find a vulnerability, report it through the
+                <x-contact-button topic="security" variant="link">security form</x-contact-button>, with enough detail
+                to reproduce it. Please give us a reasonable chance to fix it before
                 publishing. We will not pursue action against anyone who reports a genuine issue in good
                 faith, does not access or alter other people's data, and does not degrade the service.
             </p>
 
-            <h2>11. Changes to these terms</h2>
+            <h2>{{ ++$n }}. Changes to these terms</h2>
             <p>
                 We may update these terms. The date at the top shows when they last changed, and
                 continuing to use the site after a change means you accept the revised version.
@@ -141,7 +146,7 @@
                  the ordinary conflict-of-laws rules apply — which for consumers is
                  usually their own country anyway. If you want to nominate a
                  governing law and forum, add a "Governing law" section here. --}}
-            <h2>12. Your local law still applies</h2>
+            <h2>{{ ++$n }}. Your local law still applies</h2>
             <p>
                 Wherever you are reading from, the mandatory consumer protections of your own country
                 continue to apply, and nothing in these terms takes them away. If a term here conflicts
@@ -149,9 +154,10 @@
                 remain in force.
             </p>
 
-            <h2>13. Contact</h2>
+            <h2>{{ ++$n }}. Contact</h2>
             <p>
-                Questions about these terms go to <a href="mailto:hello@ny-vora.com">hello@ny-vora.com</a>.
+                Questions about these terms go through the
+                <x-contact-button topic="general" variant="link">contact form</x-contact-button>.
             </p>
         </div>
     </div>

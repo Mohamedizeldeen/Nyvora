@@ -31,13 +31,22 @@
             </p>
 
             <h2>How we are funded</h2>
-            <p>
-                {{ config('app.name') }} is supported by display advertising and by readers who
-                subscribe to our newsletter. Advertising is sold and served by third parties; the
-                editorial team has no visibility into which advertisers appear beside a given story.
-                Our <a href="{{ route('privacy-policy') }}">privacy policy</a> explains what those
-                advertising partners collect.
-            </p>
+            @if (newsletter_enabled())
+                <p>
+                    {{ config('app.name') }} is supported by display advertising and by readers who
+                    subscribe to our newsletter. Advertising is sold and served by third parties; the
+                    editorial team has no visibility into which advertisers appear beside a given story.
+                    Our <a href="{{ route('privacy-policy') }}">privacy policy</a> explains what those
+                    advertising partners collect.
+                </p>
+            @else
+                <p>
+                    {{ config('app.name') }} is supported by display advertising. It is sold and served
+                    by third parties; the editorial team has no visibility into which advertisers appear
+                    beside a given story. Our <a href="{{ route('privacy-policy') }}">privacy policy</a>
+                    explains what those advertising partners collect.
+                </p>
+            @endif
 
             <h2>Get in touch</h2>
             <p>

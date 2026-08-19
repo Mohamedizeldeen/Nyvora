@@ -112,6 +112,63 @@
         </div>
     </section>
 
+    {{-- ============ Comments ============ --}}
+    <section class="admin-card space-y-4">
+        <div>
+            <h2 class="text-sm font-black uppercase tracking-wider">Reader comments</h2>
+            <p class="admin-hint !mt-1">
+                Every comment waits for your approval regardless of this setting — it only controls
+                whether the form is offered at all.
+            </p>
+        </div>
+
+        <label class="flex items-start gap-2.5 text-sm">
+            <input type="checkbox" name="comments_enabled" value="1"
+                   @checked(old('comments_enabled', $settings['comments_enabled']) === '1' || old('comments_enabled') === '1')
+                   class="mt-0.5 size-4 rounded border-rule text-brand focus:ring-brand/30">
+            <span>
+                <span class="font-semibold">Let readers comment on articles</span>
+                <span class="block text-xs text-ink/45">
+                    Comments are moderated: nothing appears until you approve it in
+                    <a href="{{ route('admin.comments.index') }}" class="underline hover:text-brand">Comments</a>.
+                    You can also close comments on one story from its edit screen.
+                </span>
+            </span>
+        </label>
+    </section>
+
+    {{-- ============ Newsletter ============ --}}
+    <section class="admin-card space-y-4">
+        <div>
+            <h2 class="text-sm font-black uppercase tracking-wider">Newsletter</h2>
+            <p class="admin-hint !mt-1">
+                Controls the signup form, the /subscribe route, and the sections of the privacy,
+                cookie and terms pages that describe it.
+            </p>
+        </div>
+
+        <label class="flex items-start gap-2.5 text-sm">
+            <input type="checkbox" name="newsletter_enabled" value="1"
+                   @checked(old('newsletter_enabled', $settings['newsletter_enabled']) === '1' || old('newsletter_enabled') === '1')
+                   class="mt-0.5 size-4 rounded border-rule text-brand focus:ring-brand/30">
+            <span>
+                <span class="font-semibold">Offer the newsletter to readers</span>
+                <span class="block text-xs text-ink/45">
+                    While this is off, the signup form is hidden, new signups are refused, and no page
+                    claims we collect email addresses. Existing unsubscribe links keep working.
+                </span>
+            </span>
+        </label>
+
+        @unless (setting_bool('newsletter_enabled'))
+            <p class="rounded-lg border border-rule bg-paper-soft px-4 py-3 text-sm text-ink/60">
+                The newsletter is currently switched off. Nothing has been deleted — the subscriber
+                table, the routes and the Mailgun wiring are all intact, so turning this back on
+                restores it exactly as it was.
+            </p>
+        @endunless
+    </section>
+
     {{-- ============ Search engines ============ --}}
     <section class="admin-card space-y-4">
         <div>
@@ -153,25 +210,97 @@
     </section>
 
     {{-- ============ AdSense ============ --}}
-    <section class="admin-card space-y-4">
+    <section class="admin-card space-y-5">
         <div>
             <h2 class="text-sm font-black uppercase tracking-wider">Google AdSense</h2>
             <p class="admin-hint !mt-1">
-                Entering your publisher ID adds the AdSense loader script to every public page. The
-                individual ad units still need pasting into
-                <code>resources/views/components/ad-slot.blade.php</code>.
+                Everything here is copy-and-paste from your AdSense account. No code file needs
+                editing — saving these switches the placeholders into live ad units.
             </p>
         </div>
 
         <div>
-            <label for="adsense_client_id" class="admin-label">Publisher ID</label>
+            <label for="adsense_client_id" class="admin-label">
+                Publisher ID <span class="font-normal normal-case tracking-normal text-ink/40">— AdSense → Account → Settings</span>
+            </label>
             <input id="adsense_client_id" type="text" name="adsense_client_id" maxlength="40"
                    value="{{ old('adsense_client_id', $settings['adsense_client_id']) }}"
                    placeholder="ca-pub-1234567890123456"
                    @class(['admin-input font-mono', 'admin-input-invalid' => $errors->has('adsense_client_id')])>
-            <p class="admin-hint">Leave blank until your account is approved — no script is loaded while it is empty.</p>
+            <p class="admin-hint">
+                Saving this adds the AdSense script to every public page and publishes
+                <a href="{{ route('ads-txt') }}" target="_blank" rel="noopener" class="underline hover:text-brand">/ads.txt</a>,
+                which Google requires. Leave blank and no ad code loads at all.
+            </p>
             @error('adsense_client_id')<p class="admin-error">{{ $message }}</p>@enderror
         </div>
+
+        <div class="space-y-4 border-t border-rule pt-5">
+            <div>
+                <h3 class="text-xs font-bold uppercase tracking-wider text-ink/55">Ad units</h3>
+                <p class="admin-hint !mt-1">
+                    In AdSense create a display unit for each size below, then paste the code it
+                    gives you straight into the matching box. Pasting the whole
+                    <code>&lt;ins&gt;</code> snippet is fine — only the slot ID is kept.
+                </p>
+            </div>
+
+            @foreach ([
+                'sidebar' => ['label' => 'Sidebar', 'size' => '300 × 250', 'where' => 'Beside articles and archives'],
+                'leaderboard' => ['label' => 'Leaderboard', 'size' => '728 × 90', 'where' => 'Above the homepage feed'],
+                'in_feed' => ['label' => 'In-feed', 'size' => '320 × 100', 'where' => 'Between stories in the feed'],
+            ] as $key => $unit)
+                @php($field = 'adsense_slot_'.$key)
+                <div>
+                    <label for="{{ $field }}" class="admin-label">
+                        {{ $unit['label'] }}
+                        <span class="font-normal normal-case tracking-normal text-ink/40">
+                            — {{ $unit['size'] }} · {{ $unit['where'] }}
+                        </span>
+                    </label>
+
+                    <textarea id="{{ $field }}" name="{{ $field }}" rows="2"
+                              placeholder="Paste the ad unit code here, or just its slot ID"
+                              @class(['admin-input resize-y font-mono text-xs', 'admin-input-invalid' => $errors->has($field)])>{{ old($field, $settings[$field]) }}</textarea>
+
+                    @if ($settings[$field] !== '')
+                        <p class="admin-hint">
+                            <span class="font-semibold text-emerald-700">Live</span> — slot
+                            <code>{{ $settings[$field] }}</code>.
+                        </p>
+                    @else
+                        <p class="admin-hint">Empty — this placement shows a sized placeholder.</p>
+                    @endif
+
+                    @error($field)<p class="admin-error">{{ $message }}</p>@enderror
+                </div>
+            @endforeach
+        </div>
+
+        <label class="flex items-start gap-2.5 border-t border-rule pt-5 text-sm">
+            <input type="checkbox" name="adsense_auto_ads" value="1"
+                   @checked(old('adsense_auto_ads', $settings['adsense_auto_ads']) === '1' || old('adsense_auto_ads') === '1')
+                   class="mt-0.5 size-4 rounded border-rule text-brand focus:ring-brand/30">
+            <span>
+                <span class="font-semibold">Also let Google place ads automatically</span>
+                <span class="block text-xs text-ink/45">
+                    Auto ads add units of Google\'s choosing on top of the three above. Easier, but
+                    you no longer control where they land — turn it on only if you are happy with that.
+                </span>
+            </span>
+        </label>
+
+        @if (filled($settings['adsense_client_id']))
+            <p class="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+                <strong class="font-bold">AdSense is connected.</strong>
+                The loader script is on every public page and <code>/ads.txt</code> is being served.
+            </p>
+        @else
+            <p class="rounded-lg border border-rule bg-paper-soft px-4 py-3 text-sm text-ink/60">
+                No publisher ID saved, so no Google code loads anywhere on the site and the ad
+                placements show placeholders. That is the right state until your account is approved.
+            </p>
+        @endif
     </section>
 
     <div class="flex items-center gap-3">

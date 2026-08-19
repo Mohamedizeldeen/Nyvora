@@ -106,6 +106,19 @@
                     </span>
                 </label>
 
+                <label class="flex items-start gap-2.5 text-sm">
+                    <input type="checkbox" name="comments_open" value="1"
+                           @checked(old('comments_open', $article->exists ? $article->comments_open : true))
+                           class="mt-0.5 size-4 rounded border-rule text-brand focus:ring-brand/30">
+                    <span>
+                        <span class="font-semibold">Allow comments on this story</span>
+                        <span class="block text-xs text-ink/45">
+                            Untick to close comments here without affecting other stories. Comments
+                            already approved stay visible.
+                        </span>
+                    </span>
+                </label>
+
                 <div>
                     <label for="views_count" class="admin-label">View count</label>
                     <input id="views_count" type="number" name="views_count" min="0"

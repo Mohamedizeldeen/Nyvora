@@ -1,10 +1,13 @@
 <?php
 
 use App\Http\Controllers\Admin;
+use App\Http\Controllers\AdsTxtController;
 use App\Http\Controllers\ArticleController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\AuthorController;
 use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\CommentController;
+use App\Http\Controllers\ContactMessageController;
 use App\Http\Controllers\FeedController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\NewsletterController;
@@ -31,6 +34,12 @@ Route::get('/category/{category}', [CategoryController::class, 'show'])->name('c
 Route::get('/article/{article}', [ArticleController::class, 'show'])->name('article.show');
 Route::get('/search', [SearchController::class, 'index'])->name('search');
 
+// Reader comments. Held for moderation — see CommentController. Throttled,
+// because the form is public and unauthenticated.
+Route::post('/article/{article}/comments', [CommentController::class, 'store'])
+    ->middleware('throttle:5,1')
+    ->name('comments.store');
+
 // Bylines. A reporter's name is often what readers search for, so each one
 // gets its own indexable page listing everything they have published.
 Route::get('/authors', [AuthorController::class, 'index'])->name('authors.index');
@@ -48,6 +57,10 @@ Route::get('/author/{author}', [AuthorController::class, 'show'])->name('authors
 Route::get('/sitemap.xml', [SitemapController::class, 'index'])->name('sitemap');
 Route::get('/robots.txt', [RobotsController::class, 'index'])->name('robots');
 Route::get('/feed', [FeedController::class, 'index'])->name('feed');
+// Google checks this to confirm who may sell this site's ad inventory.
+Route::get('/ads.txt', [AdsTxtController::class, 'index'])->name('ads-txt');
+// The human-readable companion to the feed. /feed sends browsers here.
+Route::get('/rss', [FeedController::class, 'page'])->name('rss');
 
 /*
 |--------------------------------------------------------------------------
@@ -87,6 +100,10 @@ Route::match(['get', 'post'], '/newsletter/unsubscribe/{subscriber}', [Newslette
 
 Route::get('/about', [PageController::class, 'about'])->name('about');
 Route::get('/contact', [PageController::class, 'contact'])->name('contact');
+// Every form on the site posts here. Throttled — it is public and unauthenticated.
+Route::post('/contact', [ContactMessageController::class, 'store'])
+    ->middleware('throttle:5,1')
+    ->name('contact.send');
 Route::get('/team', [PageController::class, 'team'])->name('team');
 Route::get('/editorial-policy', [PageController::class, 'editorialPolicy'])->name('editorial-policy');
 Route::get('/advertise', [PageController::class, 'advertise'])->name('advertise');
@@ -141,6 +158,17 @@ Route::middleware(['auth', 'admin'])
         // Bound by id, not the model's route key — the token is a secret that
         // belongs in the reader's email, not in admin URLs and access logs.
         Route::delete('subscribers/{subscriber:id}', [Admin\SubscriberController::class, 'destroy'])->name('subscribers.destroy');
+
+        Route::get('reports', [Admin\ReportController::class, 'index'])->name('reports.index');
+
+        Route::get('comments', [Admin\CommentController::class, 'index'])->name('comments.index');
+        Route::post('comments/{comment}/approve', [Admin\CommentController::class, 'approve'])->name('comments.approve');
+        Route::post('comments/{comment}/unapprove', [Admin\CommentController::class, 'unapprove'])->name('comments.unapprove');
+        Route::delete('comments/{comment}', [Admin\CommentController::class, 'destroy'])->name('comments.destroy');
+
+        Route::get('messages', [Admin\MessageController::class, 'index'])->name('messages.index');
+        Route::get('messages/{message}', [Admin\MessageController::class, 'show'])->name('messages.show');
+        Route::delete('messages/{message}', [Admin\MessageController::class, 'destroy'])->name('messages.destroy');
 
         Route::get('settings', [Admin\SettingController::class, 'edit'])->name('settings.edit');
         Route::put('settings', [Admin\SettingController::class, 'update'])->name('settings.update');

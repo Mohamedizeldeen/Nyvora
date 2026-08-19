@@ -287,7 +287,7 @@ the bracketed sections of `pages/privacy-policy.blade.php`.
 ## Tests
 
 ```bash
-php artisan test      # 78 feature tests
+php artisan test      # 148 feature tests
 ./vendor/bin/pint     # code style
 ```
 
@@ -355,3 +355,149 @@ The scheduler must be running for the second one:
 ```
 * * * * * cd /path-to-app && php artisan schedule:run >> /dev/null 2>&1
 ```
+
+## Contact forms (no email addresses)
+
+The site publishes **no email address of its own**. Every place that used to carry a `mailto:` link
+now opens a form in a popup, with the right topic already selected:
+
+| Topic | Replaced |
+| --- | --- |
+| Story tip | `tips@` |
+| Correction | `corrections@` |
+| Advertising | `ads@` |
+| Freelance pitch | `pitches@` |
+| Editorial complaint | `editor@` |
+| Security report | `security@` |
+| Privacy request | `privacy@` |
+| Something else | `hello@` |
+
+Messages are **stored in `contact_messages` and read at `/admin/messages`** — nothing is emailed
+anywhere, because the publication has no mailbox. The sidebar shows an unread count, and opening a
+message marks it read.
+
+### How the popup works
+
+`<x-contact-modal>` is rendered once per page by the layout, and every `<x-contact-button>` opens it.
+It is a native `<dialog>`, so the browser handles the backdrop, focus trap and Esc-to-close.
+
+It degrades cleanly: the triggers are ordinary links to `/contact#contact-form`, where the same form
+(`<x-contact-form>`) is rendered inline. With JavaScript the form posts via `fetch` and swaps in the
+thank-you without a reload; without it, the form posts normally and the page comes back with a flash
+message. Either way the reader gets a thank-you.
+
+### Abuse protection
+
+- **Honeypot** — a hidden `website` field that must stay empty. No captcha, no third party, no cookies.
+- **Rate limit** — 5 submissions per minute per IP.
+- **Validation** — topic must be one of the known keys; name, email and a message of at least 10 characters.
+
+No IP address is stored with a message; the rate limiter only uses it transiently in the cache. The
+privacy policy describes exactly this.
+
+## Reader comments
+
+Readers leave a **name and a comment** — no email address is asked for, and no IP address is stored.
+Every comment is **held for moderation**: it is invisible to everyone until an administrator
+approves it at `/admin/comments`, where the waiting queue is the default view and the sidebar shows
+a pending badge.
+
+```
+reader posts → pending (invisible) → admin approves → visible on the article
+```
+
+Comments can be closed two ways, and **both must agree** for the form to appear:
+
+| Switch | Where |
+| --- | --- |
+| Site-wide | Admin → Settings → "Let readers comment on articles" |
+| Per story | The story's edit screen → "Allow comments on this story" |
+
+Closing comments hides the form but keeps already-approved comments readable, and the POST route
+returns 403 so a stale page cannot slip one through.
+
+Comment text is escaped on output and rendered with `whitespace-pre-line`, so paragraphing survives
+while markup cannot be injected. Deleting a story deletes its comments with it (`cascadeOnDelete`).
+
+Abuse protection matches the contact forms: a hidden honeypot field, 5 posts per minute per IP, and
+length validation. The privacy policy states plainly that a name and comment are **published for
+anyone to read** once approved.
+
+## Launch checklist
+
+```bash
+php artisan nyvora:preflight
+```
+
+Checks the things that actually stop a launch or an AdSense approval, and exits non-zero if any
+blocker remains. Run it before going live and again before applying to AdSense.
+
+It covers: `APP_ENV`, `APP_DEBUG`, `APP_URL`, the storage link, the app key, the seeded demo
+administrator, whether a real admin exists, how many articles are published, whether any still
+contain seeder filler, and whether indexing is on.
+
+## Google AdSense
+
+Everything is configured in **Admin → Settings → Google AdSense**. No file is edited to turn ads on.
+
+1. **Publisher ID** (`ca-pub-…`) — from AdSense → Account → Settings. Saving it adds the loader
+   script to every public page and starts serving `/ads.txt`.
+2. **Ad units** — create a display unit in AdSense for each size, then paste the code it gives you
+   into the matching box. The whole `<ins>` snippet is accepted; only the slot ID is stored.
+3. **Auto ads** — optional checkbox, if you want Google placing extra units of its own.
+
+| Placement | Size | Where |
+| --- | --- | --- |
+| Sidebar | 300×250 | Beside articles and archives |
+| Leaderboard | 728×90 | Above the homepage feed |
+| In-feed | 320×100 | Between stories |
+
+Until a publisher ID is saved, **no Google code loads anywhere** and each placement shows a
+correctly sized placeholder. `/ads.txt` returns 404 rather than an empty file, because an empty
+ads.txt declares that nobody is authorised to sell your inventory.
+
+Every placement reserves its height before anything loads, so an ad can never push the article out
+from under a reader — the layout-shift behaviour Core Web Vitals measures.
+
+### What AdSense review will look for
+
+Already in place: privacy policy, cookie policy, terms, about, contact, editorial policy, an
+identifiable newsroom with bylines, `ads.txt`, and no deceptive layout.
+
+**Still on you: the content.** The 20 seeded articles are invented placeholders. Google requires
+original, valuable content, and publishing fabricated stories as news would fail review — replace
+them with real reporting before applying. `nyvora:preflight` flags this as a blocker.
+
+## Google Analytics
+
+Set the **Measurement ID** (`G-…`) in Admin → Settings. Nothing loads until it is set.
+
+It runs behind **Google Consent Mode v2**: the tag is on the page but stores nothing — no cookies,
+no identifiers — until the reader accepts in the banner. Verified in a real browser:
+
+| Reader action | Cookies set |
+| --- | --- |
+| First visit, no choice yet | `nyvora-session`, `XSRF-TOKEN` only |
+| Rejects | `nyvora-session`, `XSRF-TOKEN` only |
+| Accepts | the above plus `_ga`, `_ga_<id>` |
+
+The choice is kept in `localStorage`, not a cookie, so declining does not itself store one. The
+banner only appears when analytics or advertising is actually configured.
+
+**Note for EEA/UK traffic with AdSense:** Google requires publishers serving EEA/UK users to use a
+Google-certified Consent Management Platform. The banner here is a correct Consent Mode
+implementation, but it is not certified — use Google's own Privacy & Messaging (free, in the AdSense
+dashboard) if you serve those regions.
+
+## Reports
+
+`/admin/reports` — views per day, most-read stories, and breakdowns by section and author, over 7,
+30 or 90 days with a like-for-like comparison against the preceding period.
+
+The figures come from **the site's own database**, not the Analytics API: no service account or
+credentials to set up, nothing to break when Google is slow, and it counts every read rather than
+only the visitors who accepted cookies. Google Analytics answers the other half — where readers came
+from — and the page links straight to it.
+
+`article_view_daily` holds one aggregate row per article per day, written by the same
+`Article::recordView()` that increments the running total. No reader, session or IP is recorded.

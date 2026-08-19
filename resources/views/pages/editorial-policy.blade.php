@@ -94,9 +94,9 @@
                 someone's safety.
             </p>
             <p>
-                To request a correction, email
-                <a href="mailto:corrections@ny-vora.com">corrections@ny-vora.com</a> with the article
-                URL and what is wrong. We reply to every request.
+                To request a correction, use the
+                <x-contact-button topic="correction" variant="link">corrections form</x-contact-button>, giving the
+                article URL and what is wrong. We reply to every request.
             </p>
 
             <h2>Updating stories</h2>
@@ -128,9 +128,9 @@
 
             <h2>Complaints</h2>
             <p>
-                If you believe we have breached this policy, email
-                <a href="mailto:editor@ny-vora.com">editor@ny-vora.com</a>. Tell us the article and what
-                you think went wrong. We will investigate and reply, and if we got it wrong we will say
+                If you believe we have breached this policy, tell us through the
+                <x-contact-button topic="editorial" variant="link">editorial complaints form</x-contact-button>. Name the
+                article and say what you think went wrong. We will investigate and reply, and if we got it wrong we will say
                 so publicly.
             </p>
         </div>

@@ -84,7 +84,7 @@ class SitemapController extends Controller
         }
 
         // Static pages.
-        foreach (['about', 'team', 'contact', 'editorial-policy', 'advertise', 'privacy-policy', 'cookie-policy', 'terms'] as $name) {
+        foreach (['about', 'team', 'contact', 'editorial-policy', 'advertise', 'rss', 'privacy-policy', 'cookie-policy', 'terms'] as $name) {
             $urls[] = [
                 'loc' => route($name),
                 'lastmod' => null,

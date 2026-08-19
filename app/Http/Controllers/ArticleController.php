@@ -32,6 +32,12 @@ class ArticleController extends Controller
 
         return view('article', [
             'article' => $article,
+            // Only approved comments ever reach the page.
+            'comments' => $article->comments()
+                ->approved()
+                ->orderBy('approved_at')
+                ->orderBy('id')
+                ->get(),
             'related' => $related,
             'popular' => Article::query()
                 ->published()

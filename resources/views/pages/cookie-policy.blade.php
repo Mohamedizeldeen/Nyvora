@@ -5,6 +5,7 @@
 
 @php
     $servesAds = filled(setting('adsense_client_id'));
+    $usesAnalytics = analytics_id() !== null;
     $lastUpdated = '16 August 2026';
 @endphp
 
@@ -19,8 +20,13 @@
         <div class="mb-12 rounded-xl border border-rule bg-paper-soft p-6">
             <h2 class="text-sm font-black uppercase tracking-wider text-ink">The short version</h2>
             <p class="mt-3 text-sm leading-relaxed text-ink/70">
-                We set two cookies. Both are strictly necessary for the site to function, neither
-                tracks you, and we run no analytics.
+                @if ($usesAnalytics)
+                    Two cookies are strictly necessary and always set. Analytics cookies are only
+                    set if you accept them, and the site works exactly the same if you decline.
+                @else
+                    We set two cookies. Both are strictly necessary for the site to function, neither
+                    tracks you, and we run no analytics.
+                @endif
                 @unless ($servesAds)
                     We serve no advertising, so there are no advertising cookies either.
                 @endunless
@@ -39,10 +45,16 @@
 
             <h2>The cookies we set</h2>
             <p>
-                Both of ours are &ldquo;strictly necessary&rdquo;: the site cannot work correctly
-                without them, and under UK and EU rules they do not require consent. Neither is used
-                for advertising, analytics or profiling, and neither is readable by another website.
+                The first two are &ldquo;strictly necessary&rdquo;: the site cannot work correctly
+                without them, and under UK and EU rules they do not require consent. Neither is
+                readable by another website.
             </p>
+            @if ($usesAnalytics)
+                <p>
+                    The analytics cookies are different. They are optional, and we ask before setting
+                    them &mdash; see &ldquo;Analytics&rdquo; below.
+                </p>
+            @endif
         </div>
 
         <x-cookie-table class="my-8" />
@@ -59,9 +71,11 @@
                 category have all of them. {{ config('app.name') }} runs:
             </p>
             <p>
-                <strong>No analytics.</strong> No Google Analytics, no Plausible, no Matomo, no
-                Fathom. We count article views as a single number per story, stored on our own server
-                and not linked to any reader.<br>
+                @unless ($usesAnalytics)
+                    <strong>No analytics.</strong> No Google Analytics, no Plausible, no Matomo, no
+                    Fathom. We count article views as a single number per story, stored on our own
+                    server and not linked to any reader.<br>
+                @endunless
                 <strong>No social media pixels.</strong> Our share buttons are plain links. They load
                 nothing from Facebook, X or LinkedIn, so those companies learn nothing about you unless
                 you actually click through.<br>
@@ -96,6 +110,27 @@
                 </p>
             @endif
 
+            @if ($usesAnalytics)
+                <h2>Analytics</h2>
+                <p>
+                    We use Google Analytics to see which stories are read and how people find them.
+                    It tells us about traffic, not about you personally: we do not use it to build
+                    profiles, and we have not connected it to advertising or to any other Google
+                    product.
+                </p>
+                <p>
+                    Analytics cookies are <strong>off until you accept them</strong>. We use Google
+                    Consent Mode, which means the tag is present on the page but stores nothing at
+                    all &mdash; no cookies, no identifiers &mdash; unless you choose Accept in the
+                    banner. Choosing Reject keeps it that way, and the site behaves identically.
+                </p>
+                <p>
+                    Changed your mind? Clear this site's data in your browser and the banner will ask
+                    again. You can also opt out of Google Analytics everywhere with Google's
+                    <a href="https://tools.google.com/dlpage/gaoptout" rel="nofollow noopener" target="_blank">browser add-on</a>.
+                </p>
+            @endif
+
             <h2>How to refuse or delete cookies</h2>
             <p>
                 Every browser lets you block or delete cookies, per site or entirely — look under
@@ -103,10 +138,17 @@
                 you close it.
             </p>
             <p>
-                Because ours are strictly necessary rather than optional, we do not show a cookie
-                banner: there is nothing to consent to. If you block them, the site still works and you
-                can still read everything. The only thing that breaks is the newsletter form, which
-                needs the security cookie to verify the submission.
+                @if ($usesAnalytics)
+                    We show a banner for the optional cookies only. The strictly necessary two are
+                    not part of that choice, because the site cannot work without them and the rules
+                    do not require consent for them.
+                @else
+                    Because ours are strictly necessary rather than optional, we do not show a cookie
+                    banner: there is nothing to consent to.
+                @endif
+                If you block them, the site still works and you can still read everything. The only
+                thing that breaks is any form on the site, which needs the security cookie to verify
+                the submission.
             </p>
 
             <h2>Changes</h2>
@@ -118,7 +160,7 @@
 
             <h2>Questions</h2>
             <p>
-                Email <a href="mailto:privacy@ny-vora.com">privacy@ny-vora.com</a>. Our
+                Send us a <x-contact-button topic="privacy" variant="link">privacy question</x-contact-button>. Our
                 <a href="{{ route('privacy-policy') }}">privacy policy</a> covers everything else we
                 collect.
             </p>

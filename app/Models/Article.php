@@ -10,6 +10,8 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\DB;
 
 /**
  * A single story. Everything the front end renders — hero, feed, archives,
@@ -25,6 +27,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'author_id',
     'views_count',
     'is_featured',
+    'comments_open',
     'published_at',
 ])]
 #[RouteKey('slug')] // /article/{article} resolves on the slug, not the id.
@@ -42,6 +45,7 @@ class Article extends Model
     {
         return [
             'is_featured' => 'boolean',
+            'comments_open' => 'boolean',
             'views_count' => 'integer',
             'published_at' => 'datetime',
         ];
@@ -65,6 +69,27 @@ class Article extends Model
     public function author(): BelongsTo
     {
         return $this->belongsTo(Author::class);
+    }
+
+    /**
+     * Every comment on this story, approved or not.
+     *
+     * @return HasMany<Comment, $this>
+     */
+    public function comments(): HasMany
+    {
+        return $this->hasMany(Comment::class);
+    }
+
+    /**
+     * Are readers able to comment on this story right now?
+     *
+     * Both switches have to agree: the site-wide setting, and this story's own
+     * flag. Either can close comments; neither can force them open alone.
+     */
+    public function acceptsComments(): bool
+    {
+        return comments_enabled() && $this->comments_open && $this->isPublished();
     }
 
     /**
@@ -121,6 +146,19 @@ class Article extends Model
     public function recordView(): void
     {
         $this->incrementQuietly('views_count');
+
+        // Also bucket it by day, so the reports page can show a trend rather
+        // than a single running total. Aggregate only — nothing identifies a
+        // reader. The upsert keeps this to one statement per view.
+        DB::table('article_view_daily')->upsert(
+            [[
+                'article_id' => $this->getKey(),
+                'viewed_on' => now()->toDateString(),
+                'views' => 1,
+            ]],
+            ['article_id', 'viewed_on'],
+            ['views' => DB::raw('views + 1')],
+        );
     }
 
     /**

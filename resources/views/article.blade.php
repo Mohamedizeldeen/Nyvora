@@ -48,6 +48,7 @@
             'datePublished' => $article->published_at?->toIso8601String(),
             'dateModified' => $article->updated_at?->toIso8601String(),
             'articleSection' => $article->category?->name,
+            'commentCount' => count($comments),
             'author' => $article->author ? ['@type' => 'Person', 'name' => $article->author->name] : null,
             'publisher' => ['@type' => 'Organization', 'name' => config('app.name')],
             'mainEntityOfPage' => url()->current(),
@@ -145,6 +146,9 @@
                         </div>
                     </aside>
                 @endif
+
+                {{-- Reader comments --}}
+                <x-comments :article="$article" :comments="$comments" />
 
                 {{-- Related stories --}}
                 @if ($related->isNotEmpty())

@@ -3,6 +3,7 @@
     cannot drift from the application.
 
     Shared by the privacy policy and the cookie policy — one table, one truth.
+    The analytics rows appear only when a measurement ID is configured.
 --}}
 <div {{ $attributes->class('overflow-x-auto') }}>
     <table class="w-full min-w-[36rem] border-collapse text-left text-sm">
@@ -32,6 +33,25 @@
                 </td>
                 <td class="py-3 whitespace-nowrap text-ink/70">{{ config('session.lifetime') }} minutes</td>
             </tr>
+            @if (analytics_id())
+                <tr>
+                    <td class="py-3 pr-4 font-mono text-xs">_ga</td>
+                    <td class="py-3 pr-4 text-ink/70">Analytics &mdash; needs consent</td>
+                    <td class="py-3 pr-4 text-ink/70">
+                        Google Analytics. Distinguishes one browser from another so a returning
+                        reader is not counted twice. Set only if you accept.
+                    </td>
+                    <td class="py-3 whitespace-nowrap text-ink/70">2 years</td>
+                </tr>
+                <tr>
+                    <td class="py-3 pr-4 font-mono text-xs">_ga_{{ Str::after(analytics_id(), 'G-') }}</td>
+                    <td class="py-3 pr-4 text-ink/70">Analytics &mdash; needs consent</td>
+                    <td class="py-3 pr-4 text-ink/70">
+                        Google Analytics. Keeps the state of your visit. Set only if you accept.
+                    </td>
+                    <td class="py-3 whitespace-nowrap text-ink/70">2 years</td>
+                </tr>
+            @endif
         </tbody>
     </table>
 </div>

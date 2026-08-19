@@ -19,6 +19,10 @@ class SubscriberController extends Controller
      */
     public function store(SubscribeRequest $request): RedirectResponse
     {
+        // The signup form is hidden when the newsletter is switched off, but a
+        // cached page could still post here.
+        abort_unless(newsletter_enabled(), 404);
+
         $email = $request->validated('email');
 
         // firstOrCreate keeps a repeat signup idempotent: the reader gets the

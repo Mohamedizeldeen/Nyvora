@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Admin;
 
+use App\Models\Setting;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -31,8 +32,16 @@ class SettingRequest extends FormRequest
 
             // Google's publisher id, e.g. ca-pub-1234567890123456.
             'adsense_client_id' => ['nullable', 'string', 'max:40', 'regex:/^ca-pub-\d{10,20}$/'],
+            // Already reduced to a bare id in prepareForValidation().
+            'adsense_slot_sidebar' => ['nullable', 'string', 'regex:/^\d{6,20}$/'],
+            'adsense_slot_leaderboard' => ['nullable', 'string', 'regex:/^\d{6,20}$/'],
+            'adsense_slot_in_feed' => ['nullable', 'string', 'regex:/^\d{6,20}$/'],
+            'adsense_auto_ads' => ['nullable', 'boolean'],
+            'analytics_measurement_id' => ['nullable', 'string', 'max:20', 'regex:/^G-[A-Z0-9]{6,14}$/'],
 
             'search_indexable' => ['nullable', 'boolean'],
+            'newsletter_enabled' => ['nullable', 'boolean'],
+            'comments_enabled' => ['nullable', 'boolean'],
         ];
     }
 
@@ -44,6 +53,16 @@ class SettingRequest extends FormRequest
         $this->merge([
             'promo_enabled' => $this->boolean('promo_enabled') ? '1' : '0',
             'search_indexable' => $this->boolean('search_indexable') ? '1' : '0',
+            'newsletter_enabled' => $this->boolean('newsletter_enabled') ? '1' : '0',
+            'comments_enabled' => $this->boolean('comments_enabled') ? '1' : '0',
+            'adsense_auto_ads' => $this->boolean('adsense_auto_ads') ? '1' : '0',
+            // Accept a pasted <ins> snippet and keep only the slot id.
+            'adsense_slot_sidebar' => Setting::extractAdSlotId($this->input('adsense_slot_sidebar')),
+            'adsense_slot_leaderboard' => Setting::extractAdSlotId($this->input('adsense_slot_leaderboard')),
+            'adsense_slot_in_feed' => Setting::extractAdSlotId($this->input('adsense_slot_in_feed')),
+            // A publisher id is often pasted with stray whitespace.
+            'adsense_client_id' => trim((string) $this->input('adsense_client_id')),
+            'analytics_measurement_id' => mb_strtoupper(trim((string) $this->input('analytics_measurement_id'))),
         ]);
     }
 
@@ -56,6 +75,10 @@ class SettingRequest extends FormRequest
             'promo_text.required_if' => 'Add the announcement text, or switch the strip off.',
             'promo_cta_url.required_with' => 'A button label needs a link to point at.',
             'adsense_client_id.regex' => 'Publisher IDs look like ca-pub-1234567890123456.',
+            'analytics_measurement_id.regex' => 'Measurement IDs look like G-L86F9KBYKG.',
+            'adsense_slot_sidebar.regex' => 'Paste the ad unit code from AdSense, or its slot ID.',
+            'adsense_slot_leaderboard.regex' => 'Paste the ad unit code from AdSense, or its slot ID.',
+            'adsense_slot_in_feed.regex' => 'Paste the ad unit code from AdSense, or its slot ID.',
         ];
     }
 }

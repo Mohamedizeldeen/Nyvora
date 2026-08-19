@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @section('title', 'Advertise with us')
-@section('description', 'Reach the people who build and buy technology. Display and newsletter advertising on ' . config('app.name') . '.')
+@section('description', 'Reach the people who build and buy technology. Display advertising on ' . config('app.name') . '.')
 
 @section('content')
     <x-page-header title="Advertise with us"
@@ -52,6 +52,7 @@
         </div>
 
         <div class="prose-nyvora mt-10 max-w-none">
+            @if (newsletter_enabled())
             <h2>Newsletter sponsorship</h2>
             <p>
                 The Daily Brief goes out each morning to a double opt-in list — every subscriber
@@ -59,6 +60,7 @@
                 sponsorship is a short text placement at the top of the issue, clearly marked. One
                 sponsor per issue.
             </p>
+            @endif
 
             <h2>What we do not do</h2>
             <p>
@@ -90,13 +92,14 @@
 
             <h2>Get in touch</h2>
             <p>
-                Email <a href="mailto:ads@ny-vora.com">ads@ny-vora.com</a> with what you are trying to
-                achieve and roughly when. We will come back with availability, current traffic figures
+                Tell us what you are trying to achieve and roughly when, using the
+                <x-contact-button topic="advertising" variant="link">advertising form</x-contact-button>. We will come back with availability, current traffic figures
                 and pricing. We are a small team, so you will be talking to a person rather than a
                 portal.
             </p>
         </div>
 
+        @if (newsletter_enabled())
         <div class="mt-10 rounded-xl border border-rule bg-paper-soft p-6">
             <p class="text-sm leading-relaxed text-ink/65">
                 <strong class="font-bold text-ink">Prefer no ads at all?</strong>
@@ -104,5 +107,6 @@
                 — the newsletter carries at most one clearly-marked sponsor and no tracking.
             </p>
         </div>
+        @endif
     </div>
 @endsection

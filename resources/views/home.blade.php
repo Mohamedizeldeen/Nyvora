@@ -20,7 +20,7 @@
     <div class="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8 lg:py-14">
 
         {{-- Leaderboard ad above the fold of the feed --}}
-        <x-ad-slot slot-id="ad-slot-2" size="728x90" class="mb-10" />
+        <x-ad-slot slot-id="ad-slot-2" size="728x90" placement="leaderboard" class="mb-10" />
 
         <div class="grid gap-10 lg:grid-cols-12 lg:gap-12">
 

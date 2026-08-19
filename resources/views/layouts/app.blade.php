@@ -99,6 +99,10 @@
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 
+    {{-- Google Analytics, behind Consent Mode. Must come before the AdSense
+         loader so the consent defaults are set first. --}}
+    <x-analytics />
+
     {{--
         AdSense loader. Added automatically once a publisher ID is saved in
         Admin → Settings; the individual ad units still live in <x-ad-slot>.
@@ -107,6 +111,15 @@
         <script async
                 src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client={{ $adsenseClient }}"
                 crossorigin="anonymous"></script>
+        @if (setting_bool('adsense_auto_ads'))
+            {{-- Auto ads: Google places extra units of its own choosing. --}}
+            <script>
+                (adsbygoogle = window.adsbygoogle || []).push({
+                    google_ad_client: "{{ $adsenseClient }}",
+                    enable_page_level_ads: true
+                });
+            </script>
+        @endif
     @endif
 
     @stack('head')
@@ -125,5 +138,11 @@
     </main>
 
     <x-footer />
+
+    {{-- One dialog per page; every contact button on the site opens it. --}}
+    <x-contact-modal />
+
+    {{-- Only shown when analytics or advertising is actually configured. --}}
+    <x-consent-banner />
 </body>
 </html>

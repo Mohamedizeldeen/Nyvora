@@ -52,7 +52,9 @@ it('renders the homepage with the hero, feed and sidebar', function () {
         ->assertSee('id="ad-slot-1"', escape: false)
         ->assertSee('id="ad-slot-2"', escape: false)
         ->assertSee('id="ad-slot-3"', escape: false)
-        ->assertSee('ADSENSE SLOT', escape: false);
+        // The placeholder carries a comment naming the slot; it becomes a live
+        // <ins> unit once the ad code is saved in Admin -> Settings.
+        ->assertSee('AD SLOT: ad-slot-1', escape: false);
 });
 
 it('renders the homepage even with no articles at all', function () {
@@ -337,6 +339,7 @@ it('treats LIKE wildcards in a search term as literal characters', function () {
 
 it('stores a signup as pending and emails a confirmation link', function () {
     Mail::fake();
+    Setting::put(['newsletter_enabled' => '1']);
 
     $this->post('/subscribe', ['email' => '  READER@Example.COM  '])->assertRedirect();
 
@@ -351,6 +354,7 @@ it('stores a signup as pending and emails a confirmation link', function () {
 
 it('confirms the subscription when the emailed link is opened', function () {
     Mail::fake();
+    Setting::put(['newsletter_enabled' => '1']);
     $this->post('/subscribe', ['email' => 'reader@example.com']);
 
     $subscriber = Subscriber::query()->firstOrFail();
@@ -368,6 +372,7 @@ it('404s on an unknown or tampered confirmation token', function () {
 
 it('unsubscribes from the emailed link, by GET or one-click POST', function () {
     Mail::fake();
+    Setting::put(['newsletter_enabled' => '1']);
     $this->post('/subscribe', ['email' => 'reader@example.com']);
     $subscriber = Subscriber::query()->firstOrFail();
     $subscriber->confirm();
@@ -392,6 +397,7 @@ it('unsubscribes from the emailed link, by GET or one-click POST', function () {
 
 it('does not send a second confirmation to an already confirmed address', function () {
     Mail::fake();
+    Setting::put(['newsletter_enabled' => '1']);
 
     $this->post('/subscribe', ['email' => 'reader@example.com']);
     Subscriber::query()->firstOrFail()->confirm();
@@ -404,6 +410,7 @@ it('does not send a second confirmation to an already confirmed address', functi
 
 it('restarts the opt-in flow for someone who previously unsubscribed', function () {
     Mail::fake();
+    Setting::put(['newsletter_enabled' => '1']);
 
     $subscriber = Subscriber::query()->create([
         'email' => 'reader@example.com',
@@ -426,12 +433,69 @@ it('restarts the opt-in flow for someone who previously unsubscribed', function 
 
 it('rejects an invalid email address', function () {
     Mail::fake();
+    Setting::put(['newsletter_enabled' => '1']);
 
     $this->post('/subscribe', ['email' => 'not-an-email'])
         ->assertSessionHasErrors('email');
 
     expect(Subscriber::query()->count())->toBe(0);
     Mail::assertNothingQueued();
+});
+
+it('hides the newsletter entirely while it is switched off', function () {
+    article();
+
+    // Default is off.
+    $this->get('/')
+        ->assertOk()
+        ->assertDontSee('The Daily Brief')
+        ->assertDontSee(route('subscribe'), escape: false);
+
+    // ...and a cached page cannot sneak a signup through.
+    $this->post('/subscribe', ['email' => 'reader@example.com'])->assertNotFound();
+    expect(Subscriber::query()->count())->toBe(0);
+});
+
+it('stops the policy pages describing data it no longer collects', function () {
+    // With the newsletter off, the only personal data left is what someone
+    // types into a contact form — the policy must say exactly that.
+    $this->get('/privacy-policy')
+        ->assertOk()
+        ->assertSee('what you type into a contact form')
+        ->assertDontSee('Mailgun')
+        ->assertDontSee('Newsletter subscriptions');
+
+    // The terms renumber themselves, so removing a clause leaves no gap.
+    $terms = $this->get('/terms')->assertOk();
+    $terms->assertDontSee('The newsletter');
+    preg_match_all('/<h2>(\d+)\./', $terms->getContent(), $m);
+    expect($m[1])->toBe(array_map('strval', range(1, count($m[1]))));
+});
+
+it('brings the newsletter back when switched on, with nothing lost', function () {
+    Mail::fake();
+    article();
+    Setting::put(['newsletter_enabled' => '1']);
+
+    $this->get('/')->assertOk()->assertSee('The Daily Brief');
+    $this->post('/subscribe', ['email' => 'reader@example.com'])->assertRedirect();
+
+    expect(Subscriber::query()->count())->toBe(1);
+    $this->get('/privacy-policy')->assertOk()->assertSee('Newsletter subscriptions');
+});
+
+it('keeps unsubscribe links working even while the newsletter is off', function () {
+    // Someone who joined before it was switched off must still be able to leave.
+    $subscriber = Subscriber::query()->create([
+        'email' => 'reader@example.com',
+        'token' => Subscriber::newToken(),
+        'confirmed_at' => now(),
+    ]);
+
+    expect(newsletter_enabled())->toBeFalse();
+
+    $this->get(route('newsletter.unsubscribe', $subscriber))->assertOk();
+    expect($subscriber->fresh()->status())->toBe('unsubscribed');
 });
 
 /*
@@ -461,10 +525,59 @@ it('serves a sitemap listing published stories and sections', function () {
     expect(simplexml_load_string($response->getContent()))->not->toBeFalse();
 });
 
+it('sends a browser to the readable page, and a feed reader the XML', function () {
+    article();
+
+    // A browser: text/html first, and it says nothing about feeds.
+    $this->get('/feed', ['Accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'])
+        ->assertRedirect(route('rss'));
+
+    // Anything that names a feed type is a machine and gets the feed itself.
+    foreach (['application/rss+xml,application/xml;q=0.9,*/*;q=0.8', 'application/atom+xml'] as $accept) {
+        $this->get('/feed', ['Accept' => $accept])
+            ->assertOk()
+            ->assertHeader('content-type', 'application/rss+xml; charset=UTF-8');
+    }
+
+    // curl, validators and anything with no preference also get the feed —
+    // redirecting those would break the feed for real clients.
+    foreach (['*/*', ''] as $accept) {
+        $this->get('/feed', ['Accept' => $accept])
+            ->assertOk()
+            ->assertHeader('content-type', 'application/rss+xml; charset=UTF-8');
+    }
+});
+
+it('varies on Accept so a cache cannot mix up the two responses', function () {
+    article();
+
+    $this->get('/feed', ['Accept' => '*/*'])->assertOk()->assertHeader('vary', 'Accept');
+    $this->get('/feed', ['Accept' => 'text/html'])->assertRedirect(route('rss'))->assertHeader('vary', 'Accept');
+});
+
+it('shows a readable subscribe page at /rss', function () {
+    $live = article(['title' => 'A story in the feed']);
+
+    $this->get('/rss')
+        ->assertOk()
+        ->assertSee('RSS feed')
+        // The feed address is offered for copying...
+        ->assertSee(route('feed'), escape: false)
+        // ...and the page shows what is actually in it.
+        ->assertSee($live->title);
+});
+
+it('still advertises the raw feed for autodiscovery, not the html page', function () {
+    $this->get('/')
+        ->assertOk()
+        ->assertSee('type="application/rss+xml"', escape: false)
+        ->assertSee('href="'.route('feed').'"', escape: false);
+});
+
 it('serves a valid RSS feed of the latest stories', function () {
     $article = article(['title' => 'A story worth syndicating']);
 
-    $response = $this->get('/feed')
+    $response = $this->get('/feed', ['Accept' => 'application/rss+xml'])
         ->assertOk()
         ->assertHeader('content-type', 'application/rss+xml; charset=UTF-8')
         ->assertSee('A story worth syndicating');

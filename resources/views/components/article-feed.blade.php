@@ -42,7 +42,7 @@
                 @if ($loop->iteration === $adAfter && ! $loop->last)
                     {{-- In-feed placement: a large mobile banner between stories. --}}
                     <div class="py-6">
-                        <x-ad-slot slot-id="ad-slot-3" size="320x100" />
+                        <x-ad-slot slot-id="ad-slot-3" size="320x100" placement="in_feed" />
                     </div>
                 @endif
             @endforeach

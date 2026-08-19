@@ -82,8 +82,8 @@
             <h2>Work with us</h2>
             <p>
                 We take pitches from freelance reporters who know a beat well. Send a short pitch — what
-                the story is, why now, and who you would talk to — to
-                <a href="mailto:pitches@ny-vora.com">pitches@ny-vora.com</a>. Please do not send
+                the story is, why now, and who you would talk to — through the
+                <x-contact-button topic="pitch" variant="link">pitch form</x-contact-button>. Please do not send
                 finished articles on spec.
             </p>
 

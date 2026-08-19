@@ -8,6 +8,7 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\View as ViewFacade;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\ViewErrorBag;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -26,6 +27,13 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Laravel shares $errors through the `web` middleware group. Error
+        // pages rendered *outside* it — a 404 for a URL that matches no route
+        // at all — never get it, so any component touching $errors turns that
+        // 404 into a 500. Sharing an empty bag up front makes every view safe;
+        // the middleware still overwrites it with the real one per request.
+        ViewFacade::share('errors', new ViewErrorBag);
+
         // The navbar and footer both list every section. Composing the data here
         // keeps that query out of every controller that renders the chrome.
         ViewFacade::composer(

@@ -22,7 +22,10 @@
             {{-- Category nav (desktop) --}}
             <ul class="hidden flex-1 items-center justify-center gap-7 lg:flex">
                 @foreach ($navCategories as $category)
-                    @php($isActive = request()->routeIs('category.show') && request()->route('category')?->is($category))
+                    {{-- On a 404 for an unknown slug the route parameter is still the
+                         raw string, not a model, so check the type before calling is(). --}}
+                    @php($routeCategory = request()->route('category'))
+                    @php($isActive = $routeCategory instanceof \App\Models\Category && $routeCategory->is($category))
                     <li>
                         <a href="{{ route('category.show', $category) }}"
                            @class([
