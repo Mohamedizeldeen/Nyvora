@@ -209,6 +209,40 @@
         @endif
     </section>
 
+    {{-- ============ Analytics ============ --}}
+    <section class="admin-card space-y-4">
+        <div>
+            <h2 class="text-sm font-black uppercase tracking-wider">Google Analytics</h2>
+            <p class="admin-hint !mt-1">
+                Copy the Measurement ID from Analytics → Admin → Data streams. Nothing Google-related
+                loads while this is empty.
+            </p>
+        </div>
+
+        <div>
+            <label for="analytics_measurement_id" class="admin-label">Measurement ID</label>
+            <input id="analytics_measurement_id" type="text" name="analytics_measurement_id" maxlength="20"
+                   value="{{ old('analytics_measurement_id', $settings['analytics_measurement_id']) }}"
+                   placeholder="G-XXXXXXXXXX"
+                   @class(['admin-input font-mono', 'admin-input-invalid' => $errors->has('analytics_measurement_id')])>
+            @error('analytics_measurement_id')<p class="admin-error">{{ $message }}</p>@enderror
+        </div>
+
+        @if (analytics_id())
+            <p class="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+                <strong class="font-bold">Analytics is connected.</strong>
+                It runs behind Google Consent Mode: the tag is on every page but stores nothing —
+                no cookies, no identifiers — until a reader accepts in the banner. Figures from our
+                own database are in <a href="{{ route('admin.reports.index') }}" class="underline">Reports</a>.
+            </p>
+        @else
+            <p class="rounded-lg border border-rule bg-paper-soft px-4 py-3 text-sm text-ink/60">
+                No measurement ID saved, so no analytics script loads and no consent banner is shown.
+                Reports still work — they are built from this site's own data, not from Google.
+            </p>
+        @endif
+    </section>
+
     {{-- ============ AdSense ============ --}}
     <section class="admin-card space-y-5">
         <div>

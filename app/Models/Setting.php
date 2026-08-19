@@ -23,7 +23,15 @@ class Setting extends Model
 
     protected $keyType = 'string';
 
-    private const CACHE_KEY = 'settings.all';
+    /**
+     * Only the rows from the database are cached under this key — never the
+     * defaults merged in. See all_settings() for why.
+     *
+     * The key is versioned: a deploy that changes the cached shape bumps it, so
+     * an old entry is ignored instead of having to be cleared by hand on every
+     * server.
+     */
+    private const CACHE_KEY = 'settings.stored.v2';
 
     /**
      * Defaults used when a key has never been saved. Editing these changes the
@@ -68,15 +76,24 @@ class Setting extends Model
      */
     public static function all_settings(): array
     {
-        return Cache::rememberForever(self::CACHE_KEY, function () {
+        // Cache the stored rows only, and merge the defaults on every read.
+        //
+        // Caching the *merged* array is the obvious version and it is wrong:
+        // the cache lives forever, so a setting added in a later deploy is
+        // absent from it, and every view doing $settings['new_key'] throws
+        // "Undefined array key" until someone clears the cache by hand. Merging
+        // here means a new key works the moment the code ships.
+        $stored = Cache::rememberForever(self::CACHE_KEY, function () {
             try {
-                return array_merge(self::DEFAULTS, self::query()->pluck('value', 'key')->all());
+                return self::query()->pluck('value', 'key')->all();
             } catch (Throwable) {
                 // Before the first migration there is no settings table yet —
                 // fall back to the defaults rather than 500 the whole site.
-                return self::DEFAULTS;
+                return [];
             }
         });
+
+        return array_merge(self::DEFAULTS, $stored);
     }
 
     /**
