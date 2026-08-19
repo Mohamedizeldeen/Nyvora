@@ -4,15 +4,18 @@ namespace App\Models;
 
 use Database\Factories\AuthorFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\RouteKey;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Str;
 
 /**
  * A byline. Kept separate from `users` so contributors can be credited on an
  * article without needing a login account.
  */
-#[Fillable(['name', 'bio', 'avatar_url'])]
+#[Fillable(['name', 'slug', 'bio', 'avatar_url'])]
+#[RouteKey('slug')] // /author/{author} resolves on the slug, not the id.
 class Author extends Model
 {
     /** @use HasFactory<AuthorFactory> */
@@ -26,6 +29,27 @@ class Author extends Model
     public function articles(): HasMany
     {
         return $this->hasMany(Article::class);
+    }
+
+    /**
+     * A unique slug derived from a name, skipping one author's own row so an
+     * edit that leaves the name alone does not collide with itself.
+     */
+    public static function uniqueSlug(string $name, ?self $ignore = null): string
+    {
+        $base = Str::slug($name) ?: 'author';
+        $slug = $base;
+        $suffix = 2;
+
+        while (static::query()
+            ->where('slug', $slug)
+            ->when($ignore?->exists, fn ($query) => $query->whereKeyNot($ignore->getKey()))
+            ->exists()
+        ) {
+            $slug = $base.'-'.$suffix++;
+        }
+
+        return $slug;
     }
 
     /**

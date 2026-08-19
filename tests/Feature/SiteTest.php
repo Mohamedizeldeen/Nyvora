@@ -182,13 +182,117 @@ it('404s on drafts, scheduled posts and unknown slugs', function () {
 |--------------------------------------------------------------------------
 */
 
-it('serves the pages AdSense review expects', function (string $path, string $expected) {
+it('serves every static page a publication is expected to have', function (string $path, string $expected) {
     $this->get($path)->assertOk()->assertSee($expected);
 })->with([
     ['/about', 'About us'],
     ['/contact', 'Contact'],
+    ['/team', 'Our team'],
+    ['/editorial-policy', 'Editorial policy'],
+    ['/advertise', 'Advertise with us'],
     ['/privacy-policy', 'Privacy policy'],
+    ['/cookie-policy', 'Cookie policy'],
+    ['/terms', 'Terms of use'],
 ]);
+
+it('links every static page from the footer, on every page', function () {
+    $response = $this->get('/')->assertOk();
+
+    foreach (['about', 'team', 'authors.index', 'editorial-policy', 'advertise', 'contact',
+        'privacy-policy', 'cookie-policy', 'terms', 'feed'] as $name) {
+        $response->assertSee(route($name), escape: false);
+    }
+});
+
+it('keeps the cookie table identical on the privacy and cookie policies', function () {
+    // Both render the same component, so the two documents cannot drift apart
+    // and describe different cookies.
+    foreach (['/privacy-policy', '/cookie-policy'] as $path) {
+        $this->get($path)
+            ->assertOk()
+            ->assertSee(config('session.cookie'))
+            ->assertSee('XSRF-TOKEN');
+    }
+});
+
+it('describes advertising accurately depending on whether ads are switched on', function () {
+    $this->get('/cookie-policy')->assertOk()->assertSee('We do not currently serve advertising');
+
+    Setting::put(['adsense_client_id' => 'ca-pub-1234567890123456']);
+
+    $this->get('/cookie-policy')->assertOk()->assertSee('Google AdSense');
+    $this->get('/privacy-policy')->assertOk()->assertSee('Google AdSense');
+});
+
+/*
+|--------------------------------------------------------------------------
+| Authors
+|--------------------------------------------------------------------------
+*/
+
+it('lists authors who have published, and hides those who have not', function () {
+    $published = Author::factory()->create(['name' => 'Amara Bello', 'slug' => 'amara-bello']);
+    $silent = Author::factory()->create(['name' => 'Never Published', 'slug' => 'never-published']);
+    article(['author_id' => $published->id]);
+
+    $this->get('/authors')
+        ->assertOk()
+        ->assertSee('Amara Bello')
+        ->assertDontSee('Never Published');
+});
+
+it('shows an author profile with their stories', function () {
+    $author = Author::factory()->create(['name' => 'Priya Raman', 'slug' => 'priya-raman', 'bio' => 'Covers security.']);
+    $other = Author::factory()->create(['slug' => 'someone-else']);
+
+    $theirs = article(['title' => 'A story they wrote', 'author_id' => $author->id]);
+    $notTheirs = article(['title' => 'Somebody else wrote this', 'author_id' => $other->id]);
+
+    $this->get('/author/priya-raman')
+        ->assertOk()
+        ->assertSee('Priya Raman')
+        ->assertSee('Covers security.')
+        ->assertSee($theirs->title)
+        ->assertDontSee($notTheirs->title)
+        ->assertSee('ProfilePage', escape: false);
+});
+
+it('404s for an unknown author, or one with nothing published', function () {
+    $empty = Author::factory()->create(['slug' => 'empty-byline']);
+    $draftOnly = Author::factory()->create(['slug' => 'draft-only']);
+    Article::factory()->draft()->create(['author_id' => $draftOnly->id]);
+
+    $this->get('/author/empty-byline')->assertNotFound();
+    $this->get('/author/draft-only')->assertNotFound();
+    $this->get('/author/no-such-person')->assertNotFound();
+});
+
+it('links the byline on an article to the author profile', function () {
+    $author = Author::factory()->create(['name' => 'Maya Okonkwo', 'slug' => 'maya-okonkwo']);
+    $article = article(['author_id' => $author->id]);
+
+    $this->get("/article/{$article->slug}")
+        ->assertOk()
+        ->assertSee(route('authors.show', $author), escape: false);
+});
+
+it('includes author profiles in the sitemap, but not empty ones', function () {
+    $published = Author::factory()->create(['slug' => 'has-stories']);
+    $empty = Author::factory()->create(['slug' => 'no-stories']);
+    article(['author_id' => $published->id]);
+
+    $this->get('/sitemap.xml')
+        ->assertOk()
+        ->assertSee(route('authors.index'), escape: false)
+        ->assertSee(route('authors.show', $published), escape: false)
+        ->assertDontSee('no-stories', escape: false)
+        // ...and the new static pages are listed too.
+        ->assertSee(route('terms'), escape: false)
+        ->assertSee(route('cookie-policy'), escape: false)
+        ->assertSee(route('editorial-policy'), escape: false)
+        ->assertSee(route('advertise'), escape: false)
+        ->assertSee(route('team'), escape: false);
+});
 
 /*
 |--------------------------------------------------------------------------

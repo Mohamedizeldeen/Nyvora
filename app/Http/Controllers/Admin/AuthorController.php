@@ -74,6 +74,7 @@ class AuthorController extends Controller
     {
         return [
             'name' => $request->validated('name'),
+            'slug' => $request->validated('slug'),
             'bio' => $request->validated('bio'),
             'avatar_url' => $this->resolveImageField(
                 $request,

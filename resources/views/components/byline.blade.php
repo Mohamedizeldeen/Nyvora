@@ -4,32 +4,33 @@
     Timestamps use Carbon's diffForHumans(), with the exact date exposed through
     a <time datetime="..."> element for machines and hover tooltips.
 
+    The author name links to their profile, except inside a card that is already
+    one big link — nesting <a> inside <a> is invalid HTML, so `linked="false"`
+    turns it back into plain text there.
+
     Usage: <x-byline :article="$article" :avatar="true" />
 --}}
 @props([
     'article',
     'avatar' => false,
+    'linked' => true,
 ])
 
-<div {{ $attributes->merge(['class' => 'flex items-center gap-2.5 text-sm text-ink/55']) }}>
+<div {{ $attributes->class('flex items-center gap-2.5 text-sm text-ink/55') }}>
     @if ($avatar && $article->author)
-        <span class="relative flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-brand text-xs font-bold text-white">
-            {{-- Initials sit underneath as the fallback if the avatar fails to load. --}}
-            {{ $article->author->initials() }}
-            @if ($article->author->avatar_url)
-                <img src="{{ $article->author->avatar_url }}"
-                     alt=""
-                     loading="lazy"
-                     decoding="async"
-                     class="absolute inset-0 size-full object-cover"
-                     onerror="this.remove()">
-            @endif
-        </span>
+        <x-author-avatar :author="$article->author" class="size-9 text-xs" />
     @endif
 
     <span class="min-w-0">
         @if ($article->author)
-            <span class="font-semibold text-ink/75">{{ $article->author->name }}</span>
+            @if ($linked)
+                <a href="{{ route('authors.show', $article->author) }}"
+                   class="relative z-10 font-semibold text-ink/75 transition-colors hover:text-brand">
+                    {{ $article->author->name }}
+                </a>
+            @else
+                <span class="font-semibold text-ink/75">{{ $article->author->name }}</span>
+            @endif
             <span aria-hidden="true" class="mx-1 text-ink/30">&middot;</span>
         @endif
 

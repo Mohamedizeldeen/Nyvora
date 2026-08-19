@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Article;
+use App\Models\Author;
 use App\Models\Category;
 use Illuminate\Http\Response;
 use Illuminate\Support\Carbon;
@@ -56,8 +57,34 @@ class SitemapController extends Controller
                 }
             });
 
+        // Author profiles. Only bylines with published work — an empty profile
+        // is a thin page, and AuthorController 404s it anyway.
+        $authors = Author::query()
+            ->withMax(['articles as last_published_at' => fn ($query) => $query->published()], 'published_at')
+            // whereHas rather than having() on a withCount alias — the latter
+            // needs a GROUP BY and is rejected by SQLite.
+            ->whereHas('articles', fn ($query) => $query->published())
+            ->orderBy('name')
+            ->get();
+
+        $urls[] = [
+            'loc' => route('authors.index'),
+            'lastmod' => null,
+            'changefreq' => 'weekly',
+            'priority' => '0.5',
+        ];
+
+        foreach ($authors as $author) {
+            $urls[] = [
+                'loc' => route('authors.show', $author),
+                'lastmod' => $author->last_published_at ? $this->w3c($author->last_published_at) : null,
+                'changefreq' => 'weekly',
+                'priority' => '0.5',
+            ];
+        }
+
         // Static pages.
-        foreach (['about', 'contact', 'privacy-policy'] as $name) {
+        foreach (['about', 'team', 'contact', 'editorial-policy', 'advertise', 'privacy-policy', 'cookie-policy', 'terms'] as $name) {
             $urls[] = [
                 'loc' => route($name),
                 'lastmod' => null,

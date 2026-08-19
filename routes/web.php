@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin;
 use App\Http\Controllers\ArticleController;
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\AuthorController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\FeedController;
 use App\Http\Controllers\HomeController;
@@ -12,7 +13,7 @@ use App\Http\Controllers\RobotsController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\SubscriberController;
-use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
+use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -29,6 +30,11 @@ Route::get('/', [HomeController::class, 'index'])->name('home');
 Route::get('/category/{category}', [CategoryController::class, 'show'])->name('category.show');
 Route::get('/article/{article}', [ArticleController::class, 'show'])->name('article.show');
 Route::get('/search', [SearchController::class, 'index'])->name('search');
+
+// Bylines. A reporter's name is often what readers search for, so each one
+// gets its own indexable page listing everything they have published.
+Route::get('/authors', [AuthorController::class, 'index'])->name('authors.index');
+Route::get('/author/{author}', [AuthorController::class, 'show'])->name('authors.show');
 
 /*
 |--------------------------------------------------------------------------
@@ -65,7 +71,7 @@ Route::get('/newsletter/confirm/{subscriber}', [NewsletterController::class, 'co
 
 // GET for the link in the email, POST for the RFC 8058 one-click header.
 Route::match(['get', 'post'], '/newsletter/unsubscribe/{subscriber}', [NewsletterController::class, 'unsubscribe'])
-    ->withoutMiddleware([ValidateCsrfToken::class])
+    ->withoutMiddleware([PreventRequestForgery::class])
     ->name('newsletter.unsubscribe');
 
 /*
@@ -73,13 +79,20 @@ Route::match(['get', 'post'], '/newsletter/unsubscribe/{subscriber}', [Newslette
 | Static pages
 |--------------------------------------------------------------------------
 |
-| AdSense review expects a publisher to have these three pages live.
+| AdSense review — and readers — expect a publication to say who it is,
+| how to reach it, how it makes editorial decisions, and what it does with
+| their data. All of it lives here.
 |
 */
 
 Route::get('/about', [PageController::class, 'about'])->name('about');
 Route::get('/contact', [PageController::class, 'contact'])->name('contact');
+Route::get('/team', [PageController::class, 'team'])->name('team');
+Route::get('/editorial-policy', [PageController::class, 'editorialPolicy'])->name('editorial-policy');
+Route::get('/advertise', [PageController::class, 'advertise'])->name('advertise');
 Route::get('/privacy-policy', [PageController::class, 'privacyPolicy'])->name('privacy-policy');
+Route::get('/cookie-policy', [PageController::class, 'cookiePolicy'])->name('cookie-policy');
+Route::get('/terms', [PageController::class, 'terms'])->name('terms');
 
 /*
 |--------------------------------------------------------------------------

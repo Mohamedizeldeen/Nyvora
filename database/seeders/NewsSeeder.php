@@ -148,6 +148,7 @@ class NewsSeeder extends Seeder
             $authors[$index] = Author::query()->updateOrCreate(
                 ['name' => $attributes['name']],
                 [
+                    'slug' => Str::slug($attributes['name']),
                     'bio' => $attributes['bio'],
                     'avatar_url' => 'https://i.pravatar.cc/160?u='.urlencode($attributes['name']),
                 ],

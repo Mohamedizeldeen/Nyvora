@@ -231,7 +231,7 @@ it('creates an author and refuses to delete one with stories', function () {
     $article = Article::factory()->create();
 
     $this->actingAs(admin())
-        ->delete("/admin/authors/{$article->author_id}")
+        ->delete("/admin/authors/{$article->author->slug}")
         ->assertSessionHas('error');
 });
 

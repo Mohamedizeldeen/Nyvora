@@ -86,7 +86,8 @@ Sign in at `/login`; the dashboard is at `/admin`.
 | `/article/{slug}` | `ArticleController@show` | Increments `views_count`, shows related stories |
 | `/search?q=` | `SearchController@index` | Keyword search over headline and excerpt |
 | `/subscribe` | `SubscriberController@store` | Newsletter form (POST) |
-| `/about`, `/contact`, `/privacy-policy` | `PageController` | Static pages required for AdSense review |
+| `/authors`, `/author/{slug}` | `AuthorController` | Byline index and author profiles |
+| `/about`, `/team`, `/contact`, `/editorial-policy`, `/advertise`, `/privacy-policy`, `/cookie-policy`, `/terms` | `PageController` | See the Pages table below |
 | `/login`, `/logout` | `Auth\LoginController` | Newsroom sign-in (rate limited to 5 tries/minute) |
 | `/admin/…` | `Admin\*` | Dashboard — requires `auth` + `admin` middleware |
 
@@ -100,7 +101,7 @@ the flag gets a 403 rather than a redirect.
 | Dashboard | Published/draft/scheduled counts, total views, subscriber growth, most-read stories |
 | Stories | Full CRUD, search and filters, image upload, one-click publish and feature toggles |
 | Sections | Name, slug and the colour used for that section's labels site-wide |
-| Authors | Name, bio and avatar |
+| Authors | Name, slug, bio and avatar — drives the public author profiles |
 | Subscribers | Search, remove, and CSV export of the newsletter list |
 | Settings | Tagline, footer blurb, stories per page, announcement strip, AdSense publisher ID |
 
@@ -286,7 +287,7 @@ the bracketed sections of `pages/privacy-policy.blade.php`.
 ## Tests
 
 ```bash
-php artisan test      # 62 feature tests
+php artisan test      # 78 feature tests
 ./vendor/bin/pint     # code style
 ```
 
@@ -306,3 +307,51 @@ on the PHP version above — the platform pin exists to prevent exactly this.
 
 **Signups work but no email arrives.** Check `php artisan nyvora:mail-test you@yourdomain.com`, then
 confirm a queue worker is running (`php artisan queue:work`) — confirmation emails are queued.
+
+## Pages
+
+| Page | Route | Notes |
+| --- | --- | --- |
+| About us | `/about` | Who we are, what we cover, how we are funded |
+| Our team | `/team` | Newsroom structure; the people list is pulled from the database |
+| Authors | `/authors` | Byline index — only authors with published work |
+| Author profile | `/author/{slug}` | Bio, every story they wrote, `ProfilePage` structured data |
+| Editorial policy | `/editorial-policy` | Sourcing, corrections, independence, AI use |
+| Advertise with us | `/advertise` | Formats matching the real ad slots, and what is not for sale |
+| Contact us | `/contact` | Tips, corrections, advertising, press |
+| Privacy policy | `/privacy-policy` | Written against what the code actually does |
+| Cookie policy | `/cookie-policy` | Cookie table generated from `config/session.php` |
+| Terms of use | `/terms` | Copyright, acceptable use, liability |
+
+Every one of these is linked from the footer on every page, and listed in `sitemap.xml`.
+
+### Contact addresses must exist
+
+Every page points readers at addresses on the sending domain:
+
+`tips@` `corrections@` `ads@` `hello@` `privacy@` `security@` `editor@` `pitches@` — all `@ny-vora.com`.
+
+Create these mailboxes (or forwards) before launch. AdSense review checks that contact details work,
+and the editorial policy promises a reply to every correction request.
+
+### Governing law is deliberately not stated
+
+The terms carry no choice-of-law clause, because naming a jurisdiction requires knowing where the
+company is established. Without one, ordinary conflict-of-laws rules apply — which for consumers is
+usually their own country anyway. Section 12 says local consumer protections still apply. If you
+want to nominate a governing law and forum, there is a Blade comment marking the spot in
+`pages/terms.blade.php`. The same applies to a registered postal address in the privacy policy.
+
+### Retention promises are enforced in code
+
+The privacy policy states two retention periods, and both are implemented rather than aspirational:
+
+- **Server logs, 30 days** — `LOG_STACK=daily` with `LOG_DAILY_DAYS=30`.
+- **Unconfirmed signups, 30 days** — `Subscriber::prunable()`, run by the scheduled `model:prune`.
+  Unsubscribed rows are deliberately kept, which the policy discloses.
+
+The scheduler must be running for the second one:
+
+```
+* * * * * cd /path-to-app && php artisan schedule:run >> /dev/null 2>&1
+```

@@ -105,14 +105,14 @@
 
                 {{-- Lead image --}}
                 @if ($article->thumbnail_url)
+                    {{-- <figure> is kept without a caption: it is still the correct
+                         element for a lead image, and a real caption/credit can be
+                         added here later. --}}
                     <figure class="mt-8">
                         <x-thumbnail :article="$article" :eager="true"
                                      :alt="$article->title"
                                      sizes="(min-width: 1024px) 780px, 100vw"
                                      class="aspect-[16/9] w-full rounded-xl" />
-                        <figcaption class="mt-2.5 text-xs text-ink/45">
-                            Placeholder image for demonstration purposes.
-                        </figcaption>
                     </figure>
                 @endif
 

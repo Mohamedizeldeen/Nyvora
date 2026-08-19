@@ -3,6 +3,9 @@
 @section('title', $author->exists ? 'Edit author' : 'New author')
 
 @section('actions')
+    @if ($author->exists && $author->articles()->published()->exists())
+        <a href="{{ route('authors.show', $author) }}" target="_blank" rel="noopener" class="btn-ghost">View profile</a>
+    @endif
     <a href="{{ route('admin.authors.index') }}" class="btn-ghost">Back to authors</a>
 @endsection
 
@@ -23,6 +26,19 @@
                        value="{{ old('name', $author->name) }}"
                        @class(['admin-input', 'admin-input-invalid' => $errors->has('name')])>
                 @error('name')<p class="admin-error">{{ $message }}</p>@enderror
+            </div>
+
+            <div>
+                <label for="slug" class="admin-label">URL slug</label>
+                <div class="flex items-center gap-2">
+                    <span class="shrink-0 text-xs text-ink/40">/author/</span>
+                    <input id="slug" type="text" name="slug" maxlength="140"
+                           value="{{ old('slug', $author->slug) }}"
+                           placeholder="generated-from-the-name"
+                           @class(['admin-input', 'admin-input-invalid' => $errors->has('slug')])>
+                </div>
+                <p class="admin-hint">Leave blank to build it from the name. Changing it breaks existing links.</p>
+                @error('slug')<p class="admin-error">{{ $message }}</p>@enderror
             </div>
 
             <div>
