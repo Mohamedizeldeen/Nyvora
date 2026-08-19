@@ -38,6 +38,9 @@ class SettingRequest extends FormRequest
             'adsense_slot_in_feed' => ['nullable', 'string', 'regex:/^\d{6,20}$/'],
             'adsense_auto_ads' => ['nullable', 'boolean'],
             'analytics_measurement_id' => ['nullable', 'string', 'max:20', 'regex:/^G-[A-Z0-9]{6,14}$/'],
+            // Not required: a payload that omits it should keep the current
+            // choice rather than failing the whole save.
+            'consent_manager' => ['nullable', 'in:built_in,google'],
 
             'search_indexable' => ['nullable', 'boolean'],
             'newsletter_enabled' => ['nullable', 'boolean'],
@@ -56,6 +59,8 @@ class SettingRequest extends FormRequest
             'newsletter_enabled' => $this->boolean('newsletter_enabled') ? '1' : '0',
             'comments_enabled' => $this->boolean('comments_enabled') ? '1' : '0',
             'adsense_auto_ads' => $this->boolean('adsense_auto_ads') ? '1' : '0',
+            // Absent means "leave it alone", so fall back to what is stored.
+            'consent_manager' => $this->input('consent_manager') ?: Setting::get('consent_manager'),
             // Accept a pasted <ins> snippet and keep only the slot id.
             'adsense_slot_sidebar' => Setting::extractAdSlotId($this->input('adsense_slot_sidebar')),
             'adsense_slot_leaderboard' => Setting::extractAdSlotId($this->input('adsense_slot_leaderboard')),

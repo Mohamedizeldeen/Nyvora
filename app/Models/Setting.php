@@ -60,6 +60,10 @@ class Setting extends Model
         // Google Analytics 4 measurement ID, e.g. G-XXXXXXXXXX. Empty = no
         // analytics code loads at all.
         'analytics_measurement_id' => '',
+        // Who asks the reader for consent: this site's own banner, or Google's
+        // certified CMP (Privacy & Messaging in AdSense). Never both — two
+        // banners would fight over the same consent signal.
+        'consent_manager' => 'built_in',
         // Indexing is on by default — a site nobody can find is the worse failure.
         'search_indexable' => '1',
         // The newsletter is switched off. Everything behind it (table, routes,

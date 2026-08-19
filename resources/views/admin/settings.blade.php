@@ -228,6 +228,37 @@
             @error('analytics_measurement_id')<p class="admin-error">{{ $message }}</p>@enderror
         </div>
 
+        <div class="border-t border-rule pt-4">
+            <label for="consent_manager" class="admin-label">Who asks readers for cookie consent</label>
+            <select id="consent_manager" name="consent_manager" class="admin-input">
+                <option value="built_in" @selected(old('consent_manager', $settings['consent_manager']) === 'built_in')>
+                    This site's own banner
+                </option>
+                <option value="google" @selected(old('consent_manager', $settings['consent_manager']) === 'google')>
+                    Google's certified CMP (Privacy &amp; Messaging)
+                </option>
+            </select>
+
+            <p class="admin-hint">
+                Only one may be active — two banners would send conflicting signals.
+                Google <strong>requires</strong> a certified CMP for readers in the EEA, the UK and
+                Switzerland once you serve ads, and its own is free in the AdSense dashboard under
+                Privacy &amp; messaging. Our banner is a correct Consent Mode implementation but is
+                not certified, so it is the right choice only while you are not running ads there.
+            </p>
+
+            @if (uses_google_cmp())
+                <p class="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                    <strong class="font-bold">Google's CMP is in charge.</strong>
+                    Our banner is switched off. Because Google only shows its message where consent
+                    is legally required, tracking defaults to denied in the EEA/UK/Switzerland and
+                    granted elsewhere &mdash; otherwise readers outside those regions would be denied
+                    forever with no way to accept. Create the message in AdSense &rarr; Privacy &amp;
+                    messaging, or nobody in those regions will be asked at all.
+                </p>
+            @endif
+        </div>
+
         @if (analytics_id())
             <p class="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
                 <strong class="font-bold">Analytics is connected.</strong>

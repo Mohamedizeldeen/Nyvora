@@ -74,7 +74,7 @@ class PreflightCommand extends Command
         $this->check(
             'Demo administrator removed or repassworded',
             ! $demoAdmin || ! Hash::check('password', $demoAdmin->password),
-            'admin@nyvora.test still uses the seeded password "password"',
+            'admin@nyvora.test still uses the seeded password "password" — fix it in Admin → Your account',
         );
         $this->check(
             'At least one administrator exists',

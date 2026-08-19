@@ -287,7 +287,7 @@ the bracketed sections of `pages/privacy-policy.blade.php`.
 ## Tests
 
 ```bash
-php artisan test      # 148 feature tests
+php artisan test      # 154 feature tests
 ./vendor/bin/pint     # code style
 ```
 
@@ -501,3 +501,41 @@ from — and the page links straight to it.
 
 `article_view_daily` holds one aggregate row per article per day, written by the same
 `Article::recordView()` that increments the running total. No reader, session or IP is recorded.
+
+## Changing your admin email or password
+
+**Admin → Your account.** Both changes ask for your current password first, so an
+unattended signed-in browser cannot be used to take the account over.
+
+Changing the password signs out every *other* session — the admin routes run
+Laravel's `AuthenticateSession` middleware, which stamps the password hash into
+each session and rejects any that still carries the old one. The tab you made the
+change in stays signed in.
+
+New passwords must be at least 12 characters and are checked against the
+Have I Been Pwned breach list. This is also how you clear the
+`nyvora:preflight` warning about the seeded demo password.
+
+## Cookie consent: which manager
+
+Google **requires a certified CMP** for readers in the EEA, the UK and Switzerland once you serve
+ads. Admin → Settings → Google Analytics has a selector for who asks:
+
+| Choice | When it is right |
+| --- | --- |
+| **This site's own banner** | While you are not serving ads to EEA/UK/CH readers. A correct Consent Mode v2 implementation, but not certified by Google. |
+| **Google's certified CMP** | Once ads are live. Free, in AdSense → Privacy & messaging. |
+
+Only one is ever active — two banners would send conflicting consent signals, so selecting Google's
+CMP switches ours off automatically.
+
+The consent defaults change with the choice, and this matters:
+
+- **Own banner** — denied worldwide until someone accepts, because the banner asks everyone.
+- **Google's CMP** — denied in the EEA/UK/CH (where Google shows its message) and granted
+  elsewhere. Google's message never appears outside those regions, so defaulting to denied
+  everywhere would leave the rest of the world permanently denied with no way to accept, and
+  analytics would silently record nothing.
+
+If you select Google's CMP, you must actually create the message in AdSense → Privacy & messaging,
+or nobody in those regions will be asked at all.

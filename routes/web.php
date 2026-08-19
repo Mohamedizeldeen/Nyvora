@@ -17,6 +17,7 @@ use App\Http\Controllers\SearchController;
 use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\SubscriberController;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
+use Illuminate\Session\Middleware\AuthenticateSession;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -139,7 +140,10 @@ Route::post('/logout', [LoginController::class, 'destroy'])
 |
 */
 
-Route::middleware(['auth', 'admin'])
+// AuthenticateSession is what gives Auth::logoutOtherDevices() teeth: it stamps
+// the password hash into the session, so every *other* admin session dies the
+// moment the password changes. Without it that call is close to a no-op.
+Route::middleware(['auth', AuthenticateSession::class, 'admin'])
     ->prefix('admin')
     ->name('admin.')
     ->group(function () {
@@ -158,6 +162,11 @@ Route::middleware(['auth', 'admin'])
         // Bound by id, not the model's route key — the token is a secret that
         // belongs in the reader's email, not in admin URLs and access logs.
         Route::delete('subscribers/{subscriber:id}', [Admin\SubscriberController::class, 'destroy'])->name('subscribers.destroy');
+
+        // The signed-in administrator's own account.
+        Route::get('account', [Admin\AccountController::class, 'edit'])->name('account.edit');
+        Route::put('account', [Admin\AccountController::class, 'updateProfile'])->name('account.profile');
+        Route::put('account/password', [Admin\AccountController::class, 'updatePassword'])->name('account.password');
 
         Route::get('reports', [Admin\ReportController::class, 'index'])->name('reports.index');
 

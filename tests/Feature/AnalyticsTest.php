@@ -142,3 +142,53 @@ it('drops daily rows when the article goes', function () {
 
     expect(DB::table('article_view_daily')->count())->toBe(0);
 });
+
+/*
+|--------------------------------------------------------------------------
+| Consent manager
+|--------------------------------------------------------------------------
+*/
+
+it('shows our own banner and denies everywhere by default', function () {
+    article();
+    Setting::put(['analytics_measurement_id' => 'G-L86F9KBYKG', 'consent_manager' => 'built_in']);
+
+    $this->get('/')
+        ->assertOk()
+        ->assertSee('data-consent-banner', escape: false)
+        ->assertSee("analytics_storage: 'denied'", escape: false)
+        // No region scoping: our banner asks everyone, everywhere.
+        ->assertDontSee('region:', escape: false);
+});
+
+it('stands aside when Google\'s certified CMP is in charge', function () {
+    article();
+    Setting::put(['analytics_measurement_id' => 'G-L86F9KBYKG', 'consent_manager' => 'google']);
+
+    $response = $this->get('/')->assertOk();
+
+    // Two banners would send conflicting consent signals.
+    $response->assertDontSee('data-consent-banner', escape: false);
+
+    // Denied where consent is required...
+    $response->assertSee('region:', escape: false)
+        ->assertSee('"GB"', escape: false)
+        ->assertSee('"DE"', escape: false)
+        ->assertSee('"CH"', escape: false);
+
+    // ...and granted elsewhere, or Google's message never appearing outside the
+    // EEA would leave those readers permanently denied and unmeasurable.
+    $response->assertSee("analytics_storage: 'granted'", escape: false);
+});
+
+it('only accepts a consent manager it knows about', function () {
+    $admin = User::factory()->create(['is_admin' => true]);
+
+    $this->actingAs($admin)->put('/admin/settings', [
+        'site_tagline' => 'Tagline',
+        'footer_description' => 'Blurb.',
+        'articles_per_page' => 8,
+        'promo_tone' => 'accent',
+        'consent_manager' => 'some-other-cmp',
+    ])->assertSessionHasErrors('consent_manager');
+});

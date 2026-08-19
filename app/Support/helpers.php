@@ -52,6 +52,20 @@ if (! function_exists('analytics_id')) {
     }
 }
 
+if (! function_exists('uses_google_cmp')) {
+    /**
+     * Is Google's certified CMP handling consent instead of our own banner?
+     *
+     * Google requires a certified CMP for readers in the EEA, UK and
+     * Switzerland when ads are served. When theirs is switched on, ours must
+     * stay out of the way — two banners would send conflicting signals.
+     */
+    function uses_google_cmp(): bool
+    {
+        return Setting::get('consent_manager') === 'google';
+    }
+}
+
 if (! function_exists('tracking_needs_consent')) {
     /**
      * Does this page load anything a reader has to consent to?
@@ -61,6 +75,11 @@ if (! function_exists('tracking_needs_consent')) {
      */
     function tracking_needs_consent(): bool
     {
+        if (uses_google_cmp()) {
+            // Google's CMP renders its own message; ours must not appear too.
+            return false;
+        }
+
         return analytics_id() !== null || filled(Setting::get('adsense_client_id'));
     }
 }
