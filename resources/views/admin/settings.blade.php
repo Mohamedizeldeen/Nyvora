@@ -296,6 +296,9 @@
                 Saving this adds the AdSense script to every public page and publishes
                 <a href="{{ route('ads-txt') }}" target="_blank" rel="noopener" class="underline hover:text-brand">/ads.txt</a>,
                 which Google requires. Leave blank and no ad code loads at all.
+                Paste it in either spelling &mdash; <code>pub-…</code> as shown on your
+                AdSense account page, or <code>ca-pub-…</code> as it appears in the ad
+                code &mdash; and either the bare ID or the whole script tag.
             </p>
             @error('adsense_client_id')<p class="admin-error">{{ $message }}</p>@enderror
         </div>

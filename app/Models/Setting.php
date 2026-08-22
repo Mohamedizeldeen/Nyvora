@@ -137,6 +137,22 @@ class Setting extends Model
      * accepted, because asking someone to pick the number out of a script tag
      * is exactly the kind of step that gets done wrong.
      */
+    /**
+     * The publisher id in the form ads.txt wants: bare `pub-…`.
+     *
+     * AdSense uses two spellings of the same number. The script tag and the
+     * <ins> elements want `ca-pub-…`; an ads.txt record wants `pub-…` with no
+     * prefix. Emitting `ca-pub-…` there produces a file that parses cleanly but
+     * authorises nobody, and AdSense reports it as missing rather than invalid
+     * — which is a long way to look for a three-character bug.
+     */
+    public static function adsTxtPublisherId(): string
+    {
+        $id = trim((string) self::get('adsense_client_id'));
+
+        return $id === '' ? '' : preg_replace('/^ca-/', '', $id);
+    }
+
     public static function extractAdSlotId(?string $pasted): string
     {
         $pasted = trim((string) $pasted);

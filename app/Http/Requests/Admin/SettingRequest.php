@@ -65,10 +65,31 @@ class SettingRequest extends FormRequest
             'adsense_slot_sidebar' => Setting::extractAdSlotId($this->input('adsense_slot_sidebar')),
             'adsense_slot_leaderboard' => Setting::extractAdSlotId($this->input('adsense_slot_leaderboard')),
             'adsense_slot_in_feed' => Setting::extractAdSlotId($this->input('adsense_slot_in_feed')),
-            // A publisher id is often pasted with stray whitespace.
-            'adsense_client_id' => trim((string) $this->input('adsense_client_id')),
+            // AdSense shows this id as `pub-…` on its Account page but as
+            // `ca-pub-…` in the script it hands you. Both are the same account,
+            // so accept either and store the `ca-pub-…` spelling the ad tags need.
+            'adsense_client_id' => self::normalisePublisherId($this->input('adsense_client_id')),
             'analytics_measurement_id' => mb_strtoupper(trim((string) $this->input('analytics_measurement_id'))),
         ]);
+    }
+
+    /**
+     * Reduce whatever was pasted to the canonical `ca-pub-…` spelling.
+     */
+    protected static function normalisePublisherId(mixed $value): string
+    {
+        $id = trim((string) $value);
+
+        if ($id === '') {
+            return '';
+        }
+
+        // Tolerate a whole script tag being pasted in.
+        if (preg_match('/ca-pub-\\d{10,20}/', $id, $m)) {
+            return $m[0];
+        }
+
+        return preg_match('/^pub-\\d{10,20}$/', $id) === 1 ? 'ca-'.$id : $id;
     }
 
     /**

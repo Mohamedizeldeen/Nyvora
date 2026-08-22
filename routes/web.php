@@ -16,9 +16,12 @@ use App\Http\Controllers\RobotsController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\SubscriberController;
+use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Session\Middleware\AuthenticateSession;
+use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Support\Facades\Route;
+use Illuminate\View\Middleware\ShareErrorsFromSession;
 
 /*
 |--------------------------------------------------------------------------
@@ -55,11 +58,22 @@ Route::get('/author/{author}', [AuthorController::class, 'show'])->name('authors
 |
 */
 
-Route::get('/sitemap.xml', [SitemapController::class, 'index'])->name('sitemap');
-Route::get('/robots.txt', [RobotsController::class, 'index'])->name('robots');
-Route::get('/feed', [FeedController::class, 'index'])->name('feed');
-// Google checks this to confirm who may sell this site's ad inventory.
-Route::get('/ads.txt', [AdsTxtController::class, 'index'])->name('ads-txt');
+// These four are read by machines, never by a logged-in visitor. Running them
+// through the session stack stamps every response with `Set-Cookie` and
+// `Cache-Control: no-cache, private`, which tells the CDN in front of the site
+// not to cache — so every crawl of a file that changes ~never wakes up PHP.
+Route::withoutMiddleware([
+    StartSession::class,
+    ShareErrorsFromSession::class,
+    AddQueuedCookiesToResponse::class,
+    PreventRequestForgery::class,
+])->group(function () {
+    Route::get('/sitemap.xml', [SitemapController::class, 'index'])->name('sitemap');
+    Route::get('/robots.txt', [RobotsController::class, 'index'])->name('robots');
+    Route::get('/feed', [FeedController::class, 'index'])->name('feed');
+    // Google checks this to confirm who may sell this site's ad inventory.
+    Route::get('/ads.txt', [AdsTxtController::class, 'index'])->name('ads-txt');
+});
 // The human-readable companion to the feed. /feed sends browsers here.
 Route::get('/rss', [FeedController::class, 'page'])->name('rss');
 

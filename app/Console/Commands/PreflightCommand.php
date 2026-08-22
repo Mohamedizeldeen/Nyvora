@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\Article;
+use App\Models\Setting;
 use App\Models\User;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
@@ -119,6 +120,20 @@ class PreflightCommand extends Command
             'Add it in Admin -> Settings once AdSense approves you (not needed to apply)',
             blocker: false,
         );
+
+        // AdSense reports "Ads.txt status: Not found" both when the file is
+        // genuinely absent and when it parses but names nobody it recognises,
+        // so check the line itself rather than just that something is served.
+        if ($publisher !== '') {
+            $adsTxtId = Setting::adsTxtPublisherId();
+            $this->check(
+                'ads.txt names the bare publisher id',
+                (bool) preg_match('/^pub-\\d{10,20}$/', $adsTxtId),
+                "ads.txt would say \"{$adsTxtId}\" — an ads.txt record takes pub-..., never ca-pub-...",
+                blocker: true,
+            );
+        }
+
         $this->check(
             'ads.txt served',
             $publisher !== '',

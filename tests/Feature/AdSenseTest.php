@@ -9,6 +9,23 @@ use App\Models\User;
  * turn ads on, and nothing Google-related loads until a publisher ID is saved.
  */
 
+/**
+ * A minimal valid Settings payload. The form posts every field at once, so a
+ * test that changes one still has to send the required ones.
+ *
+ * @param  array<string, mixed>  $overrides
+ * @return array<string, mixed>
+ */
+function settingsPayload(array $overrides = []): array
+{
+    return array_merge([
+        'site_tagline' => 'Tagline',
+        'footer_description' => 'Blurb.',
+        'articles_per_page' => 8,
+        'promo_tone' => 'accent',
+    ], $overrides);
+}
+
 /*
 |--------------------------------------------------------------------------
 | Nothing loads until it is configured
@@ -50,8 +67,59 @@ it('publishes ads.txt as soon as a publisher ID is saved', function () {
     $this->get('/ads.txt')
         ->assertOk()
         ->assertHeader('content-type', 'text/plain; charset=UTF-8')
-        // Exactly the line Google looks for.
-        ->assertSee('google.com, ca-pub-1234567890123456, DIRECT, f08c47fec0942fa0');
+        // Exactly the line Google looks for. Note `pub-`, not `ca-pub-`: an
+        // ads.txt record names the bare publisher id. Getting this wrong yields
+        // a file that fetches fine and authorises nobody, and AdSense then
+        // reports the status as "Not found".
+        ->assertSee('google.com, pub-1234567890123456, DIRECT, f08c47fec0942fa0');
+});
+
+it('never writes the ca- prefix into ads.txt', function () {
+    Setting::put(['adsense_client_id' => 'ca-pub-1234567890123456']);
+
+    $body = $this->get('/ads.txt')->assertOk()->getContent();
+
+    expect($body)->not->toContain('ca-pub-');
+});
+
+it('serves ads.txt as one cacheable line with no cookies', function () {
+    Setting::put(['adsense_client_id' => 'ca-pub-1234567890123456']);
+
+    $response = $this->get('/ads.txt')->assertOk();
+
+    // A crawler-only file. Session cookies would stop the CDN caching it.
+    expect($response->headers->getCookies())->toBeEmpty()
+        ->and($response->headers->get('Cache-Control'))->toContain('public')
+        ->and(trim($response->getContent()))->not->toContain("\n");
+});
+
+it('accepts the pub- spelling AdSense shows on its account page', function () {
+    // AdSense → Account → Settings displays "pub-1234567890123456"; the script
+    // tag it hands you says "ca-pub-…". Both must be accepted.
+    $this->actingAs(User::factory()->create(['is_admin' => true]))
+        ->put('/admin/settings', settingsPayload(['adsense_client_id' => 'pub-1234567890123456']))
+        ->assertRedirect()
+        ->assertSessionHasNoErrors();
+
+    Setting::flush();
+
+    // Stored canonically for the ad tags…
+    expect(Setting::get('adsense_client_id'))->toBe('ca-pub-1234567890123456');
+    // …and emitted bare for ads.txt.
+    $this->get('/ads.txt')->assertSee('google.com, pub-1234567890123456, DIRECT,');
+});
+
+it('accepts a whole pasted script tag as the publisher ID', function () {
+    $tag = '<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1234567890123456" crossorigin="anonymous"></script>';
+
+    $this->actingAs(User::factory()->create(['is_admin' => true]))
+        ->put('/admin/settings', settingsPayload(['adsense_client_id' => $tag]))
+        ->assertRedirect()
+        ->assertSessionHasNoErrors();
+
+    Setting::flush();
+
+    expect(Setting::get('adsense_client_id'))->toBe('ca-pub-1234567890123456');
 });
 
 it('turns a placement live when its slot is configured', function () {
